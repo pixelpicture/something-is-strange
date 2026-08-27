@@ -66,12 +66,15 @@
 
     for (let i = 0; i < 5; i += 1) {
       const el = scene.querySelector('#d' + i);
-      const pivotX = 28 + i * 31 + 6.5;
       timer(gen, () => {
         if (!el) return;
         el.getAnimations().forEach(animation => animation.cancel());
         el.style.removeProperty('transform');
-        el.setAttribute('transform', `rotate(72 ${pivotX} 372)`);
+        el.removeAttribute('transform');
+        el.setAttribute('x', String(21 + i * 31));
+        el.setAttribute('y', '359');
+        el.setAttribute('width', '29');
+        el.setAttribute('height', '13');
       }, 810 + i * 285);
     }
   }
