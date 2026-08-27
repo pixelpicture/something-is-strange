@@ -1,11 +1,11 @@
 import fs from 'node:fs';
+import vm from 'node:vm';
 
 const source = fs.readFileSync(new URL('../levels.js', import.meta.url), 'utf8').trim();
-const prefix = 'window.SIS_LEVELS = ';
-if (!source.startsWith(prefix) || !source.endsWith(';')) {
-  throw new Error('levels.js must be a pure window.SIS_LEVELS JSON assignment');
-}
-const levels = JSON.parse(source.slice(prefix.length, -1));
+const context = { window: {} };
+vm.createContext(context);
+vm.runInContext(source, context, { timeout: 1000 });
+const levels = context.window.SIS_LEVELS;
 const app = fs.readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
