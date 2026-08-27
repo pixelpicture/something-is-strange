@@ -19,32 +19,57 @@ Creative should be nearly identical to gameplay.
 - Initial 3-level schema/technical gate: PASS after validator parser fix.
 - First phone visual proof exposed human-visible failures despite green CI: shadow change unreadable, mirror desync too subtle, domino answer/state broken.
 - Iterated without scaling content until Shadow Ahead, Late Mirror, and Domino Break became visually legible.
-- Generic `THERE.` reveal was rejected as weak.
-- Specific replay reveal added and visually inspected at 412x915: core three are now sufficient to open the 10-level breadth gate.
+- Generic `THERE.` reveal was rejected as weak; mechanic-specific replay reveal replaced it.
+- Expanded atomically to Engine V2 + 10 levels with no external runtime dependencies.
+- Cheap MVP Gate: PASS for exactly 10 levels and >=8 mechanic families.
+- Full 30-frame 412x915 proof (normal/anomaly/reveal for all 10): automated PASS.
+- Human pass on that artifact: 8 PASS / 2 REPAIR. Wrong Occlusion was too visually ambiguous; Door Two Rooms reveal did not prove the two-room contradiction strongly enough.
+- Bounded repairs only: tail now visibly crosses the chair front while the cat is behind it; Door reveal now shows FIRST/SECOND incompatible spaces in one aperture.
+- Fresh 30-frame run after repairs: CI PASS and human reinspection gives **10/10 MVP MECHANIC PASS**.
 
-## MVP content set
-1. Shadow Ahead — creepy prediction
-2. Late Mirror — temporal anomaly
-3. Domino Break — prediction
-4. Wrong Light Switch — causality
-5. Color Theft — transformation
-6. Wrong Occlusion — depth/occlusion
-7. Reverse Splash — effect before cause
-8. Door Two Rooms — spatial logic
-9. Haircut Mirror — reflection causality
-10. Extra Shadow — creepy multiplicity
+This is a content/mechanic validation, not a claim that current placeholder SVG art is acquisition-quality.
+
+## MVP content set — physically retained
+1. Shadow Ahead — creepy prediction — PASS
+2. Late Mirror — temporal anomaly — PASS
+3. Domino Break — prediction — PASS
+4. Wrong Light Switch — causality — PASS
+5. Color Theft — transformation — PASS
+6. Wrong Occlusion — depth/occlusion — PASS after repair
+7. Reverse Splash — effect before cause — PASS
+8. Door Two Rooms — spatial logic — PASS after repair
+9. Haircut Mirror — reflection causality — PASS
+10. Extra Shadow — creepy multiplicity — PASS
 
 ## Engine V2 gate
-Runtime is intentionally small and browser-native:
+Runtime remains intentionally small and browser-native:
 - `levels.js`: level metadata/hotspots/reveal copy/telemetry family
 - `engine-v2.js`: renderer registry, deterministic timelines, tap loop, countdown, streak, replay reveal, local telemetry, proof query params
+- `content-repairs.js`: bounded visual repair layer for the two human-pass failures; consolidate later only if the BET survives acquisition
 - no external packages or network runtime dependencies
 
-## Next gate
-1. Cheap MVP Gate must PASS for all 10 levels and >=8 mechanic families.
-2. Existing phone proof must remain PASS for the original three after V2 refactor.
-3. Then capture/inspect normal + anomaly + reveal frames for all 10.
-4. Kill or repair visually ambiguous levels before any acquisition spend.
-5. Only after content proof: cut the three first TikTok creatives and run organic/acquisition validation.
+## Current GitHub checkpoint
+- Branch: `feature/mvp-physical-proof`
+- PR: #1
+- Current content-repair HEAD before this state update: `ba2cfadc19d53684f569e3819996ef6bfb60b548`
+- Cheap MVP Gate #41: SUCCESS
+- Phone Visual Proof #30, run `33114972255`: SUCCESS
+- Artifact `9664118780`: 30-frame repaired 10-level proof
 
-Do not build backend, monetization SDKs, procedural generation service, or 100-level factory before these gates.
+## Next gate — creative proof, not factory scale
+Build only three TikTok-native creative cuts first:
+1. Shadow Ahead
+2. Late Mirror
+3. Domino Break
+
+Requirements:
+- true 9:16 phone-first frame;
+- first meaningful visual in <=1 sec;
+- challenge visible immediately;
+- anomaly occurs quickly enough for short-form attention;
+- reveal is the same mechanic/replay used by gameplay;
+- no paid assets, backend, ad SDK, generative service, or monetization plumbing.
+
+Then inspect the creative cuts humanly. Only after creative proof should we spend on organic/acquisition validation.
+
+Do not build backend, monetization SDKs, procedural generation service, or 100-level factory before creative and distribution gates.
