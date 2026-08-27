@@ -2,8 +2,16 @@ import pathlib, struct, sys
 
 root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'proof')
 files = sorted(root.glob('*.png'))
-if len(files) != 6:
-    raise SystemExit(f'expected 6 screenshots, found {len(files)}')
+if len(files) != 9:
+    raise SystemExit(f'expected 9 screenshots, found {len(files)}')
+
+required = {
+    'shadow-normal.png', 'shadow-wrong.png', 'shadow-reveal.png',
+    'mirror-normal.png', 'mirror-wrong.png', 'mirror-reveal.png',
+    'domino-normal.png', 'domino-wrong.png', 'domino-reveal.png',
+}
+if {p.name for p in files} != required:
+    raise SystemExit('phone proof screenshot set is incomplete')
 
 for path in files:
     data = path.read_bytes()
