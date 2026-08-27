@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Something Is Strange</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="hud">
+      <div class="brand">SOMETHING IS STRANGE</div>
+      <div class="streak" id="streak">STREAK 0</div>
+    </header>
+
+    <section class="card" aria-live="polite">
+      <div class="prompt" id="prompt">YOU HAVE 5 SECONDS. WHAT'S WRONG?</div>
+      <div class="timer" id="timer">5</div>
+      <div class="scene-wrap" id="sceneWrap">
+        <svg id="scene" viewBox="0 0 360 520" role="img" aria-label="Puzzle scene"></svg>
+        <button id="hotspot" class="hotspot" aria-label="Tap the strange part"></button>
+        <div class="tap-layer" id="tapLayer" aria-hidden="true"></div>
+      </div>
+      <div class="feedback" id="feedback"></div>
+      <button id="nextBtn" class="next" hidden>NEXT</button>
+    </section>
+
+    <footer class="footer">Tap the part that feels impossible.</footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
