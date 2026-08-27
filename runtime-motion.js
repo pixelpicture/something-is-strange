@@ -70,7 +70,7 @@
       timer(gen, () => {
         if (!el) return;
         el.getAnimations().forEach(animation => animation.cancel());
-        el.style.transform = 'none';
+        el.style.removeProperty('transform');
         el.setAttribute('transform', `rotate(72 ${pivotX} 372)`);
       }, 810 + i * 285);
     }
