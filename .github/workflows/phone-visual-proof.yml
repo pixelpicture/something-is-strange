@@ -8,7 +8,7 @@ on:
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - name: Resolve Chrome
@@ -21,14 +21,13 @@ jobs:
       - name: Serve prototype
         run: |
           python3 -m http.server 8000 >/tmp/sis-http.log 2>&1 &
-          echo $! > /tmp/sis-http.pid
           for i in {1..20}; do
             curl -fsS http://127.0.0.1:8000/ >/dev/null && exit 0
             sleep 0.2
           done
           cat /tmp/sis-http.log
           exit 1
-      - name: Capture phone frames
+      - name: Capture 10-level phone proof
         run: |
           set -euo pipefail
           mkdir -p proof
@@ -38,16 +37,23 @@ jobs:
               --window-size=412,915 --virtual-time-budget="$budget" \
               --screenshot="proof/${name}.png" "$url"
           }
-          capture shadow-normal 'http://127.0.0.1:8000/?level=0' 250
-          capture shadow-wrong  'http://127.0.0.1:8000/?level=0' 2900
-          capture shadow-reveal 'http://127.0.0.1:8000/?level=0&revealAt=2900' 3400
-          capture mirror-normal 'http://127.0.0.1:8000/?level=1' 1000
-          capture mirror-wrong  'http://127.0.0.1:8000/?level=1' 1900
-          capture mirror-reveal 'http://127.0.0.1:8000/?level=1&revealAt=1900' 2400
-          capture domino-normal 'http://127.0.0.1:8000/?level=2' 350
-          capture domino-wrong  'http://127.0.0.1:8000/?level=2' 2400
-          capture domino-reveal 'http://127.0.0.1:8000/?level=2&revealAt=2400' 2900
-      - name: Validate phone frames
+          shotset() {
+            base="$1"; level="$2"; wrong_at="$3"; reveal_budget="$4"
+            capture "${base}-normal" "http://127.0.0.1:8000/?level=${level}" 300
+            capture "${base}-wrong" "http://127.0.0.1:8000/?level=${level}" "$wrong_at"
+            capture "${base}-reveal" "http://127.0.0.1:8000/?level=${level}&revealAt=${wrong_at}" "$reveal_budget"
+          }
+          shotset shadow 0 2900 3400
+          shotset mirror 1 1900 2400
+          shotset domino 2 2400 2900
+          shotset light-switch 3 1800 2300
+          shotset color-theft 4 2200 2700
+          shotset occlusion 5 2500 3000
+          shotset reverse-splash 6 2100 2600
+          shotset door-two-rooms 7 3300 3900
+          shotset haircut-mirror 8 2300 2800
+          shotset extra-shadow 9 2300 2800
+      - name: Validate 30 phone frames
         run: python3 scripts/validate_pngs.py proof
       - uses: actions/upload-artifact@v4
         with:
