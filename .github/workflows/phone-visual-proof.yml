@@ -1,0 +1,54 @@
+name: Phone Visual Proof
+
+on:
+  push:
+    branches: [ feature/mvp-physical-proof ]
+  pull_request:
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve Chrome
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          echo "CHROME=$CHROME" >> "$GITHUB_ENV"
+          "$CHROME" --version
+      - name: Serve prototype
+        run: |
+          python3 -m http.server 8000 >/tmp/sis-http.log 2>&1 &
+          echo $! > /tmp/sis-http.pid
+          for i in {1..20}; do
+            curl -fsS http://127.0.0.1:8000/ >/dev/null && exit 0
+            sleep 0.2
+          done
+          cat /tmp/sis-http.log
+          exit 1
+      - name: Capture phone frames
+        run: |
+          set -euo pipefail
+          mkdir -p proof
+          capture() {
+            name="$1"; url="$2"; budget="$3"
+            "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars \
+              --window-size=412,915 --virtual-time-budget="$budget" \
+              --screenshot="proof/${name}.png" "$url"
+          }
+          capture shadow-normal 'http://127.0.0.1:8000/?level=0' 250
+          capture shadow-wrong  'http://127.0.0.1:8000/?level=0' 2900
+          capture mirror-normal 'http://127.0.0.1:8000/?level=1' 1000
+          capture mirror-wrong  'http://127.0.0.1:8000/?level=1' 1900
+          capture domino-normal 'http://127.0.0.1:8000/?level=2' 350
+          capture domino-wrong  'http://127.0.0.1:8000/?level=2' 2400
+      - name: Validate phone frames
+        run: python3 scripts/validate_pngs.py proof
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phone-visual-proof-${{ github.sha }}
+          path: proof/*.png
+          retention-days: 7
+          if-no-files-found: error
