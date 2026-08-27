@@ -8,7 +8,7 @@ on:
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - name: Resolve Chrome
@@ -40,10 +40,13 @@ jobs:
           }
           capture shadow-normal 'http://127.0.0.1:8000/?level=0' 250
           capture shadow-wrong  'http://127.0.0.1:8000/?level=0' 2900
+          capture shadow-reveal 'http://127.0.0.1:8000/?level=0&revealAt=2900' 3400
           capture mirror-normal 'http://127.0.0.1:8000/?level=1' 1000
           capture mirror-wrong  'http://127.0.0.1:8000/?level=1' 1900
+          capture mirror-reveal 'http://127.0.0.1:8000/?level=1&revealAt=1900' 2400
           capture domino-normal 'http://127.0.0.1:8000/?level=2' 350
           capture domino-wrong  'http://127.0.0.1:8000/?level=2' 2400
+          capture domino-reveal 'http://127.0.0.1:8000/?level=2&revealAt=2400' 2900
       - name: Validate phone frames
         run: python3 scripts/validate_pngs.py proof
       - uses: actions/upload-artifact@v4
