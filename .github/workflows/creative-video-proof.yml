@@ -1,0 +1,74 @@
+name: Creative Video Proof
+
+on:
+  push:
+    branches: [ feature/mvp-physical-proof ]
+  pull_request:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve local tools
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || true)"
+          FFMPEG="$(command -v ffmpeg || true)"
+          XVFB="$(command -v Xvfb || true)"
+          test -n "$CHROME" && test -n "$FFMPEG" && test -n "$XVFB"
+          echo "CHROME=$CHROME" >> "$GITHUB_ENV"
+          echo "FFMPEG=$FFMPEG" >> "$GITHUB_ENV"
+          echo "XVFB=$XVFB" >> "$GITHUB_ENV"
+      - name: Serve prototype
+        run: |
+          python3 -m http.server 8000 >/tmp/sis-http.log 2>&1 &
+          for i in {1..20}; do curl -fsS http://127.0.0.1:8000/ >/dev/null && exit 0; sleep 0.2; done
+          cat /tmp/sis-http.log; exit 1
+      - name: Record three native runtime cuts
+        run: |
+          set -euo pipefail
+          mkdir -p creative-video
+          export DISPLAY=:99
+          "$XVFB" :99 -screen 0 540x960x24 -nolisten tcp >/tmp/xvfb.log 2>&1 &
+          sleep 1
+          record() {
+            name="$1"; level="$2"; reveal_at="$3"; duration="$4"
+            url="http://127.0.0.1:8000/?creative=1&level=${level}&revealAt=${reveal_at}"
+            "$CHROME" --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-infobars \
+              --disable-session-crashed-bubble --no-first-run --kiosk "$url" >/tmp/${name}-chrome.log 2>&1 &
+            CPID=$!
+            sleep 0.8
+            "$FFMPEG" -y -loglevel error -f x11grab -framerate 30 -video_size 540x960 \
+              -i :99.0 -t "$duration" -c:v libx264 -preset veryfast -crf 21 -pix_fmt yuv420p \
+              -movflags +faststart "creative-video/${name}.mp4"
+            kill "$CPID" || true
+            pkill -f 'google-chrome.*--kiosk' || true
+            sleep 0.5
+          }
+          record shadow 0 3200 6.3
+          record mirror 1 2850 6.3
+          record domino 2 2700 6.0
+      - name: Validate videos and extract review frames
+        run: |
+          set -euo pipefail
+          for f in creative-video/*.mp4; do
+            test -s "$f"
+            dur=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$f")
+            python3 - "$dur" <<'PY'
+import sys
+v=float(sys.argv[1])
+assert 5.5 <= v <= 7.0, v
+PY
+            base="${f%.mp4}"
+            ffmpeg -y -loglevel error -ss 0.5 -i "$f" -frames:v 1 "${base}-start.png"
+            ffmpeg -y -loglevel error -ss 3.0 -i "$f" -frames:v 1 "${base}-mid.png"
+            ffmpeg -y -loglevel error -ss 5.0 -i "$f" -frames:v 1 "${base}-end.png"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: creative-video-proof-${{ github.sha }}
+          path: creative-video/*
+          retention-days: 7
+          if-no-files-found: error
