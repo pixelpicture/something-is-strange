@@ -11,8 +11,12 @@ mkdir -p "$PROOF"
 adb install -r android-device-lab/app/build/outputs/apk/debug/app-debug.apk
 adb shell settings put secure immersive_mode_confirmations confirmed || true
 
+lab_log() {
+  adb logcat -d -s "$LOG_TAG:I" '*:S' 2>/dev/null || true
+}
+
 append_log() {
-  adb logcat -d -s "$LOG_TAG:I" '*:S' >> "$PROOF/device-log.txt" || true
+  lab_log >> "$PROOF/device-log.txt"
 }
 
 start_level() {
@@ -22,15 +26,41 @@ start_level() {
   adb logcat -c
   adb shell am force-stop "$PKG"
   adb shell am start -n "$ACTIVITY" --ei level "$level" --ez creative "$creative" --ez acq "$acq" >/dev/null
-  for _ in $(seq 1 40); do
-    if adb logcat -d -s "$LOG_TAG:I" '*:S' 2>/dev/null | grep -q 'READY file:///android_asset/index.html'; then
+  for _ in $(seq 1 50); do
+    if lab_log | grep -q '\[SIS_LAB\] READY'; then
       return 0
     fi
     sleep 0.2
   done
-  echo "Timed out waiting for WebView READY (level=$level creative=$creative acq=$acq)" >&2
+  echo "Timed out waiting for semantic LAB READY (level=$level creative=$creative acq=$acq)" >&2
   append_log
   return 1
+}
+
+hotspot_xy() {
+  lab_log | grep '\[SIS_LAB\] READY' | tail -1 | sed -E 's/.*READY [0-9]+ ([0-9]+) ([0-9]+).*/\1 \2/'
+}
+
+wait_next_xy() {
+  for _ in $(seq 1 30); do
+    local xy
+    xy=$(lab_log | grep '\[SIS_LAB\] NEXT ' | tail -1 | sed -E 's/.*NEXT ([0-9]+) ([0-9]+).*/\1 \2/' || true)
+    if [[ "$xy" =~ ^[0-9]+\ [0-9]+$ ]]; then
+      echo "$xy"
+      return 0
+    fi
+    sleep 0.1
+  done
+  echo "Timed out waiting for NEXT geometry" >&2
+  return 1
+}
+
+real_hotspot_tap() {
+  local xy x y
+  xy=$(hotspot_xy)
+  read -r x y <<< "$xy"
+  test -n "$x" && test -n "$y"
+  adb shell input tap "$x" "$y"
 }
 
 shot() {
@@ -58,50 +88,53 @@ shot shadow-start
 sleep 1.9
 shot shadow-anomaly
 adb shell input tap 120 1450
-sleep 0.35
+sleep 0.6
 shot shadow-wrongtap
 append_log
 
-# Shadow: real correct touch then real NEXT touch.
+# Shadow: real correct touch at live DOM hotspot, then real NEXT touch at live DOM geometry.
 start_level 0 false false
 sleep 1.9
-adb shell input tap 785 1290
-sleep 0.45
+real_hotspot_tap
+sleep 1.1
 shot shadow-correct
-adb shell input tap 540 1815
-sleep 0.8
+next_xy=$(wait_next_xy)
+read -r next_x next_y <<< "$next_xy"
+adb shell input tap "$next_x" "$next_y"
+sleep 1.0
 shot shadow-next
 append_log
 
-# Mirror: capture the lag window then hit the actual hotspot.
+# Mirror: capture lag window then hit live DOM hotspot.
 start_level 1 false false
 sleep 1.7
 shot mirror-anomaly
-adb shell input tap 760 900
-sleep 0.45
+real_hotspot_tap
+sleep 1.1
 shot mirror-correct
 append_log
 
-# Domino: capture the broken chain then hit d5 hotspot.
+# Domino: capture broken chain then hit live DOM hotspot.
 start_level 2 false false
 sleep 2.1
 shot domino-anomaly
-adb shell input tap 620 1280
-sleep 0.45
+real_hotspot_tap
+sleep 1.1
 shot domino-correct
 append_log
 
-# Acquisition: exact Shadow acquisition query assembled in Activity, after WebView READY.
+# Acquisition: exact Shadow acquisition query after semantic DOM readiness.
 start_level 0 true true
-adb shell 'screenrecord --time-limit 4 /sdcard/shadow-device.mp4 >/dev/null 2>&1 &' >/dev/null
-sleep 0.75
+sleep 0.4
+adb shell 'screenrecord --time-limit 5 /sdcard/shadow-device.mp4 >/dev/null 2>&1 &' >/dev/null
+sleep 0.6
 shot acq-before-turn
-sleep 0.85
+sleep 0.8
 shot acq-after-turn
-sleep 2.7
+sleep 4.0
 adb pull /sdcard/shadow-device.mp4 "$PROOF/shadow-device.mp4" >/dev/null
 append_log
 
 grep -q 'LOAD file:///android_asset/index.html' "$PROOF/device-log.txt"
-grep -q 'READY file:///android_asset/index.html' "$PROOF/device-log.txt"
+grep -q '\[SIS_LAB\] READY' "$PROOF/device-log.txt"
 grep -q 'creative=1&acq=1' "$PROOF/device-log.txt"
