@@ -19,6 +19,20 @@ append_log() {
   lab_log >> "$PROOF/device-log.txt"
 }
 
+wait_log() {
+  local pattern="$1"
+  local tries="${2:-50}"
+  for _ in $(seq 1 "$tries"); do
+    if lab_log | grep -Eq "$pattern"; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  echo "Timed out waiting for log pattern: $pattern" >&2
+  append_log
+  return 1
+}
+
 start_level() {
   local level="$1"
   local creative="${2:-false}"
@@ -26,12 +40,9 @@ start_level() {
   adb logcat -c
   adb shell am force-stop "$PKG"
   adb shell am start -n "$ACTIVITY" --ei level "$level" --ez creative "$creative" --ez acq "$acq" >/dev/null
-  for _ in $(seq 1 50); do
-    if lab_log | grep -q '\[SIS_LAB\] READY'; then
-      return 0
-    fi
-    sleep 0.2
-  done
+  if wait_log '\[SIS_LAB\] READY' 50; then
+    return 0
+  fi
   echo "Timed out waiting for semantic LAB READY (level=$level creative=$creative acq=$acq)" >&2
   append_log
   return 1
@@ -114,7 +125,7 @@ adb pull /sdcard/device-window.xml "$PROOF/device-window.xml" >/dev/null 2>&1 ||
 ! grep -qiE 'Viewing full screen|Got it' "$PROOF/device-window.xml" 2>/dev/null
 shot shadow-start
 adb shell input tap 120 1450
-sleep 0.45
+wait_log '\[SIS_LAB\] FEEDBACK NO' 30
 shot shadow-wrongtap
 append_log
 
@@ -123,22 +134,25 @@ start_level 0 false false
 sleep 1.9
 shot shadow-anomaly
 real_hotspot_tap
-sleep 1.1
+wait_log '\[SIS_LAB\] STATE STREAK 1 THE SHADOW TURNED FIRST\.' 50
+sleep 0.2
 shot shadow-correct
 real_next_tap
-sleep 0.8
+wait_mechanic_xy mirror_desync >/dev/null
+sleep 0.2
 shot shadow-next
 
 mirror_xy=$(wait_mechanic_xy mirror_desync)
 read -r mirror_x mirror_y <<< "$mirror_xy"
 adb shell input tap "$mirror_x" "$mirror_y"
-sleep 0.35
+wait_log '\[SIS_LAB\] STATE STREAK 2 THE REFLECTION WAS LATE\.' 50
 real_next_tap
+wait_mechanic_xy domino_prediction >/dev/null
 
 domino_xy=$(wait_mechanic_xy domino_prediction)
 read -r domino_x domino_y <<< "$domino_xy"
 adb shell input tap "$domino_x" "$domino_y"
-sleep 0.35
+wait_log '\[SIS_LAB\] STATE STREAK 3 THE CHAIN STOPS HERE\.' 50
 real_next_tap
 wait_mechanic_xy wrong_light_switch >/dev/null
 append_log
@@ -148,7 +162,8 @@ start_level 1 false false
 sleep 1.7
 shot mirror-anomaly
 real_hotspot_tap
-sleep 1.1
+wait_log '\[SIS_LAB\] STATE STREAK 1 THE REFLECTION WAS LATE\.' 50
+sleep 0.2
 shot mirror-correct
 append_log
 
@@ -157,7 +172,8 @@ start_level 2 false false
 sleep 2.1
 shot domino-anomaly
 real_hotspot_tap
-sleep 1.1
+wait_log '\[SIS_LAB\] STATE STREAK 1 THE CHAIN STOPS HERE\.' 50
+sleep 0.2
 shot domino-correct
 append_log
 
