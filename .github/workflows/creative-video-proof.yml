@@ -8,16 +8,20 @@ on:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - name: Resolve local tools
         run: |
           set -euo pipefail
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || true)"
-          FFMPEG="$(command -v ffmpeg || true)"
           XVFB="$(command -v Xvfb || true)"
-          test -n "$CHROME" && test -n "$FFMPEG" && test -n "$XVFB"
+          test -n "$CHROME" && test -n "$XVFB"
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg
+          fi
+          FFMPEG="$(command -v ffmpeg)"
           echo "CHROME=$CHROME" >> "$GITHUB_ENV"
           echo "FFMPEG=$FFMPEG" >> "$GITHUB_ENV"
           echo "XVFB=$XVFB" >> "$GITHUB_ENV"
