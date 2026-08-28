@@ -32,8 +32,13 @@ shot(){ shot_to "$PROOF/$1.png"; }
 STAGE=cold_wrong_touch
 start_level 0 false false
 real_wrong_tap
-wait_log '\[SIS_LAB\] VISUAL_READY WRONG FEEDBACK NO' 40
-sleep .25
+# Wrong feedback is intentionally transient (650 ms). Prove the physical ADB tap reached
+# tapLayer from the synchronous event/feedback/state logs instead of waiting on the delayed
+# visual-ready sampler, which can legitimately observe the already-cleared text.
+wait_log '\[SIS_LAB\] EVENT WRONG_TAP' 40
+wait_log '\[SIS_LAB\] FEEDBACK NO — LOOK AGAIN\.' 40
+wait_log '\[SIS_LAB\] STATE STREAK 0 NO — LOOK AGAIN\.' 40
+sleep .10
 shot shadow-wrongtap
 adb shell uiautomator dump /sdcard/device-window.xml >/dev/null 2>&1||true
 adb pull /sdcard/device-window.xml "$PROOF/device-window.xml" >/dev/null 2>&1||true
