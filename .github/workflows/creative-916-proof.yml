@@ -43,7 +43,7 @@ jobs:
           shotset mirror 1 2500 3100
           shotset domino 2 2400 3000
       - name: Validate nine creative frames
-        run: python3 scripts/validate_pngs.py creative-proof
+        run: python3 scripts/validate_creative_pngs.py creative-proof
       - uses: actions/upload-artifact@v4
         with:
           name: creative-916-proof-${{ github.sha }}
