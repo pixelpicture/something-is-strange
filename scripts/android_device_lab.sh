@@ -93,28 +93,30 @@ echo '[SIS_LAB_HOST] BACKGROUND_RESUME_PASS' >> "$PROOF/device-log.txt"
 append_log
 
 STAGE=acquisition_motion
-# Pre-roll Android's real compositor recorder so encoder startup cannot miss the 1.35 s anomaly.
-# Then launch the unmodified acquisition scene, trim only the recorder startup tail on the host,
-# and derive before/after evidence from that one physical recording.
+# Launch the real acquisition scene first, but use the lab-only injected probe to postpone
+# all acquisition timers by exactly 1.5 s. Start Android's compositor recorder only after
+# WebView/scene readiness, then trim that exact pre-roll. Relative 450/900/1300/1350 ms
+# production motion is therefore preserved while launcher/WebView startup is excluded.
 adb logcat -c
 adb shell am force-stop "$PKG"
 adb shell rm -f /sdcard/acq-raw.mp4 >/dev/null 2>&1 || true
+adb shell am start -n "$ACTIVITY" --es url 'file:///android_asset/index.html?level=0&creative=1&acq=1&labdelay=1' >/dev/null
+wait_log '\[SIS_LAB\] ACQ_DELAY_ARMED 1500' 50
+wait_log '\[SIS_LAB\] ACQ_BASE' 50
 adb shell screenrecord --bit-rate 4000000 --time-limit 5 /sdcard/acq-raw.mp4 >/dev/null 2>&1 &
 REC_PID=$!
-sleep 1.0
-adb shell am start -n "$ACTIVITY" --ei level 0 --ez creative true --ez acq true >/dev/null
-wait_log '\[SIS_LAB\] ACQ_BASE' 50
-wait_log '\[SIS_LAB\] ACQ_TURN' 50
+wait_log '\[SIS_LAB\] ACQ_TURN' 70
 wait "$REC_PID"
 adb pull /sdcard/acq-raw.mp4 "$PROOF/acq-raw.mp4" >/dev/null
-ffmpeg -v error -y -ss 1.15 -i "$PROOF/acq-raw.mp4" -t 3.2 -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$PROOF/shadow-device.mp4"
+ffmpeg -v error -y -ss 1.35 -i "$PROOF/acq-raw.mp4" -t 3.2 -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$PROOF/shadow-device.mp4"
 rm -f "$PROOF/acq-raw.mp4"
-ffmpeg -v error -y -ss 0.55 -i "$PROOF/shadow-device.mp4" -frames:v 1 "$PROOF/acq-before-turn.png"
-ffmpeg -v error -y -ss 2.00 -i "$PROOF/shadow-device.mp4" -frames:v 1 "$PROOF/acq-after-turn.png"
+ffmpeg -v error -y -ss 0.35 -i "$PROOF/shadow-device.mp4" -frames:v 1 "$PROOF/acq-before-turn.png"
+ffmpeg -v error -y -ss 1.70 -i "$PROOF/shadow-device.mp4" -frames:v 1 "$PROOF/acq-after-turn.png"
 append_log
 
 STAGE=final_assertions
 grep -q 'LOAD file:///android_asset/index.html' "$PROOF/device-log.txt"
+grep -q '\[SIS_LAB\] ACQ_DELAY_ARMED 1500' "$PROOF/device-log.txt"
 grep -q '\[SIS_LAB\] ACQ_BASE' "$PROOF/device-log.txt"
 grep -q '\[SIS_LAB\] ACQ_TURN' "$PROOF/device-log.txt"
 grep -q '\[SIS_LAB_HOST\] DOUBLE_TAP_PASS' "$PROOF/device-log.txt"
