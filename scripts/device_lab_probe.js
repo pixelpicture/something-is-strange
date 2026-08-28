@@ -83,4 +83,16 @@
   new MutationObserver(()=>scheduleState('HOTSPOT')).observe(hotspot,{attributes:true,attributeFilter:['style']});
   traceAcq();
   requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>reportState('READY'),80)));
+
+  // Lab-only capture hygiene. This probe is injected only into the Android evidence shell.
+  // When requested explicitly, shift the acquisition script's timers by 1.5 s so Android's
+  // real screen recorder can already be running. The host trims that exact pre-roll, leaving
+  // the original 450/900/1300/1350 ms relative production motion unchanged in evidence.
+  const params = new URLSearchParams(location.search);
+  if (params.get('labdelay') === '1' && params.get('creative') === '1' && params.get('acq') === '1') {
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    window.setTimeout = (fn, ms, ...args) => nativeSetTimeout(fn, (Number(ms) || 0) + 1500, ...args);
+    log('ACQ_DELAY_ARMED',1500);
+    nativeSetTimeout(() => { window.setTimeout = nativeSetTimeout; }, 0);
+  }
 })();
