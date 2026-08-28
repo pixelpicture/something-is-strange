@@ -15,65 +15,11 @@ Buy information, not architecture. Prefer zero-dependency/browser-native impleme
 
 Creative should be nearly identical to gameplay. Dynamic temporal/causal anomalies are the differentiation; generic static anomaly clutter is not.
 
-## Physical proof history
-- Initial 3-level technical gate: PASS after validator parser repair.
-- First phone visual proof exposed real human-visible failures despite green CI; iterated before scaling.
-- Shadow Ahead, Late Mirror, Domino Break mechanic proof: PASS.
-- Expanded atomically to Engine V2 + 10 levels with no external runtime dependencies.
-- Full 30-frame 412x915 proof: 8 PASS / 2 REPAIR on first human inspection.
-- Bounded Wrong Occlusion + Door Two Rooms repairs only.
-- Fresh repaired 30-frame proof: **10/10 MVP MECHANIC PASS**.
-- 9:16 static creative composition for Shadow Ahead, Late Mirror, Domino Break: **3/3 PASS**.
-- Deterministic browser-frame video renderer: **PASS**; previous live X11 capture path is rejected.
-- Three mechanic videos: **3/3 mechanic PASS**; Shadow is the strongest acquisition candidate.
-
-## Shadow acquisition V1
-A bounded acquisition-only improvement was built for Shadow Ahead, with no paid assets or external runtime service.
-
-The proof pipeline went through several infrastructure failures that were explicitly not treated as product failures:
-- repeated independent Chrome launches: rejected as too slow/wasteful;
-- CDP virtual time: rejected after deterministic hangs;
-- repeat navigation in one page target: rejected;
-- missed `Page.loadEventFired`: replaced with runtime/DOM readiness polling;
-- recursive acquisition MutationObserver: fixed with a one-shot guard and observer disconnect;
-- baseline engine `#shadow` timer collision: removed by acquisition-specific element IDs;
-- current Ubuntu runner lacks ffmpeg: CI installs the free system package only when absent.
-
-The acquisition scene now has deterministic walker movement at ~0.45/0.9/1.3 s, a normally tracking shadow, then an impossible shadow turn at ~1.35 s while the body is still before the corner. The reveal is explicit and mechanic-specific.
-
-### Final Shadow proof
+## Canonical MVP state
 Branch: `feature/mvp-physical-proof`
 PR: #1
-Product HEAD before this state update: `0bcdc9831aa76ddc32c419f992c4a42d2a48b27f`
 
-CI on that HEAD:
-- Cheap MVP Gate #115, run `33139446396`: **SUCCESS**
-- Creative 9x16 Proof #66, run `33139446389`: **SUCCESS**
-- Phone Visual Proof #104, run `33139446418`: **SUCCESS**
-- Shadow Acquisition Frame Proof #46, run `33139446398`: **SUCCESS**
-
-Final Shadow artifact:
-- artifact id `9673335767`
-- 10 A/B keyframes + one `shadow-acquisition.mp4`
-- MP4: 540x960, 10 fps, 34 frames, 3.4 s
-
-Human inspection of the final artifact:
-- first frame intentional/full-screen: PASS
-- challenge immediately legible: PASS
-- person movement reads before anomaly: PASS
-- normal shadow attachment reads: PASS
-- shadow turns before the body reaches the corner: PASS
-- anomaly unmistakable by ~1.4 s: PASS
-- reveal clean and specific at ~2.3 s: PASS
-- dead hold removed; ~1.1 s remains after reveal: PASS
-- materially stronger than baseline: PASS
-- plausible as a real low-cost organic/blind-human test creative: PASS
-
-**Shadow acquisition creative internal gate = PASS.**
-
-This does not mean market/acquisition signal is proven. Current visual treatment is intentionally inexpensive and stylized; the next question is whether people actually stop, understand, answer, replay, or comment.
-
-## Retained 10-level MVP set
+Retained 10-level MVP set:
 1. Shadow Ahead — creepy prediction — PASS
 2. Late Mirror — temporal anomaly — PASS
 3. Domino Break — prediction — PASS
@@ -85,25 +31,79 @@ This does not mean market/acquisition signal is proven. Current visual treatment
 9. Haircut Mirror — reflection causality — PASS
 10. Extra Shadow — creepy multiplicity — PASS
 
-## Current gates
+Verified internal gates before Android device validation:
 - Cheap technical MVP: PASS
 - 10-level mechanic visual proof: 10/10 PASS
 - Static 9:16 creative composition: 3/3 PASS
-- Deterministic video pipeline: PASS
-- Three video mechanic proofs: 3/3 PASS
+- Deterministic browser video pipeline: PASS
+- Three mechanic videos: 3/3 PASS
 - Shadow acquisition A/B keyframe proof: PASS
-- Shadow acquisition final 3.4 s video: PASS
-- External blind-human / organic signal: NOT YET
+- Shadow acquisition final 3.4 s host video: PASS
+- Shadow acquisition creative internal quality gate: PASS for a cheap external/blind-human test
+
+Rejected evidence paths remain rejected and must not be revived without a new reason: live X11 capture, repeated independent Chrome capture, CDP virtual-time capture, and other brittle/expensive paths that already failed to buy useful information.
+
+## Android Device Lab — authoritative PASS
+Validated source HEAD: `fa5190a9c1b0792309859f0b9415ea54e9d01eb7` (`Stabilize Android wrong-feedback and acquisition evidence`).
+
+All five workflows on that source HEAD completed SUCCESS:
+- Android Device Lab #104, run `33211658383`: SUCCESS
+- Cheap MVP Gate #231, run `33211658446`: SUCCESS
+- Phone Visual Proof #220, run `33211658484`: SUCCESS
+- Shadow Acquisition Frame Proof #162, run `33211658370`: SUCCESS
+- Creative 9x16 Proof #182, run `33211658368`: SUCCESS
+
+Android artifact:
+- artifact id `9701918561`
+- name `android-device-lab-dcb23b9aff9c577646a9a19b8d72a3a893445e62`
+- size `3,107,627` bytes
+- digest `sha256:e0da11e54a9275321451964ed6d51a66fd38e6403293c6adfb7a7b9608c42f76`
+- expires 2026-09-04
+
+Physical/runtime evidence from API35 Pixel 6 x86_64 emulator with KVM and real `adb shell input tap`:
+- cold WebView load and interaction readiness: PASS
+- wrong physical tap routes to `tapLayer`: PASS
+- wrong tap gives `NO — LOOK AGAIN.` while streak stays 0: PASS
+- Shadow correct physical tap and reveal: PASS
+- physical NEXT advances to Late Mirror: PASS
+- Late Mirror correct physical tap/reveal: PASS
+- physical NEXT advances to Domino Break: PASS
+- Domino Break correct physical tap/reveal: PASS
+- three consecutive level cycle advances onward to Wrong Light Switch without broken state: PASS
+- double physical tap does not double-score: PASS
+- background/resume preserves a usable interaction path: PASS
+- acquisition WebView path loads with the intended query parameters: PASS
+- acquisition baseline and early-turn markers occur: PASS
+- device acquisition MP4 exists and is decodable at 1080x2400: PASS
+
+Human semantic review of the Android artifact (not just green CI):
+- `shadow-start.png`: clean portrait gameplay, no OS tutorial/system overlay: PASS
+- `shadow-anomaly.png`: Shadow anomaly visible: PASS
+- `shadow-wrongtap.png`: `NO — LOOK AGAIN.` visible and state intact: PASS
+- `shadow-correct.png`: correct reveal and NEXT visible: PASS
+- `shadow-next.png`: Late Mirror appears after NEXT with clean reset: PASS
+- `mirror-anomaly.png` / `mirror-correct.png`: mechanic and reveal readable: PASS
+- `domino-anomaly.png` / `domino-correct.png`: mechanic and reveal readable: PASS
+- `acq-before-turn.png` / `acq-after-turn.png`: acquisition scene survives Android WebView and the impossible shadow turn is visible: PASS
+- `device-window.xml`: only the app fullscreen WebView is present; no `Viewing full screen`, `Got it`, ANR, crash, action bar, or other blocking overlay: PASS
+- no black/blank screenshots in the required semantic set: PASS
+
+The device acquisition MP4 is evidence of WebView survival, not the canonical acquisition creative. It contains a lab capture transition/pre-roll artifact and therefore must not replace the already-passed deterministic host acquisition video for external creative testing. This does **not** invalidate the Android gameplay/device gate because the device criterion is that the acquisition anomaly survives the real WebView path, which the before/after frames and runtime markers establish.
+
+**Android Device Gameplay / automated pre-phone gate = PASS.**
+
+## Current gates
+- Internal technical/mechanic/creative gates: PASS
+- Android emulator physical gameplay gate: PASS
+- User physical Android phone gate: NOT YET — next required gate
+- Blind Human Comprehension H1: NOT YET
+- Organic TikTok signal H2: NOT YET
 - Paid acquisition: BLOCKED until external signal
 - Backend / monetization / procedural factory scale: BLOCKED until external signal
 
-## Next cheapest gate
-Do **not** polish all 10 levels and do **not** spend on paid TikTok yet.
+## Next required gate — user physical Android
+Do not expand scope or polish all 10 levels now.
 
-Use the final Shadow acquisition creative for a cheap external reality check:
-1. blind comprehension with 5–10 people and/or one organic TikTok post;
-2. measure whether the anomaly is understood without explanation;
-3. measure answer impulse / watch-through / replay / comments if posted;
-4. only if signal exists, repeat the acquisition treatment for Late Mirror and Domino Break or proceed to the smallest real TikTok Mini Game distribution test.
+Next step is an independent physical-phone check using the current lab APK/runtime on the user's Android device. Verify cold launch, portrait layout, tap responsiveness, wrong-tap feedback, correct reveal, NEXT progression across Shadow -> Mirror -> Domino, and absence of scroll/zoom/system-overlay interference.
 
-No backend, monetization SDK, AI content factory, or broad level-production expansion before that external gate.
+Only after the physical-phone check passes should the project proceed to preregistered H1 blind-human comprehension, then H2 organic TikTok. No paid acquisition, backend, monetization SDK, AI content factory, or broad level-production expansion before those gates.
