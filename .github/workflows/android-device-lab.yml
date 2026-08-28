@@ -74,10 +74,14 @@ jobs:
           test "$(wc -c < device-proof/shadow-device.mp4)" -gt 100000
           ! grep -qiE 'Viewing full screen|Got it' device-proof/device-window.xml 2>/dev/null
           grep -q 'creative=1&acq=1' device-proof/device-log.txt
-          test "$(grep -c '\[SIS_LAB\] EVENT HOTSPOT_CLICK' device-proof/device-log.txt)" -ge 3
+          test "$(grep -c '\[SIS_LAB\] EVENT HOTSPOT_CLICK' device-proof/device-log.txt)" -ge 5
           test "$(grep -c '\[SIS_LAB\] EVENT WRONG_TAP' device-proof/device-log.txt)" -ge 1
-          test "$(grep -c '\[SIS_LAB\] EVENT NEXT_TAP' device-proof/device-log.txt)" -ge 1
+          test "$(grep -c '\[SIS_LAB\] EVENT NEXT_TAP' device-proof/device-log.txt)" -ge 3
           grep -q '\[SIS_LAB\] FEEDBACK NO' device-proof/device-log.txt
+          grep -q '\[SIS_LAB\].*shadow_acquisition.*TIMER_DISPLAY none' device-proof/device-log.txt
+          grep -q '\[SIS_LAB\].*SCENE mirror_desync' device-proof/device-log.txt
+          grep -q '\[SIS_LAB\].*SCENE domino_prediction' device-proof/device-log.txt
+          grep -q '\[SIS_LAB\].*SCENE wrong_light_switch' device-proof/device-log.txt
           python3 - <<'PY'
           import glob, hashlib, struct
           files=sorted(glob.glob('device-proof/*.png'))
@@ -90,9 +94,9 @@ jobs:
               w,h=struct.unpack('>II',b[16:24])
               assert w>=720 and h>=1280, (p,w,h)
               hashes.append(hashlib.sha256(b).hexdigest())
-          # Screenshot capture on headless gfxstream can legally return a previous
-          # composited frame. Interaction semantics are asserted from real ADB
-          # taps + in-page lab events above; screenshots remain a visual evidence set.
+          # Headless gfxstream screencap may repeat a previously composited frame.
+          # Real ADB touches and in-page semantic events above carry interaction proof;
+          # screenshots remain the human-review visual evidence set.
           assert len(set(hashes)) >= 6, 'device proof is unexpectedly static'
           PY
 
