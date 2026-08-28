@@ -1,0 +1,52 @@
+name: Creative 9x16 Proof
+
+on:
+  push:
+    branches: [ feature/mvp-physical-proof ]
+  pull_request:
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve Chrome
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          echo "CHROME=$CHROME" >> "$GITHUB_ENV"
+      - name: Serve prototype
+        run: |
+          python3 -m http.server 8000 >/tmp/sis-http.log 2>&1 &
+          for i in {1..20}; do curl -fsS http://127.0.0.1:8000/ >/dev/null && exit 0; sleep 0.2; done
+          cat /tmp/sis-http.log; exit 1
+      - name: Capture three creative layouts
+        run: |
+          set -euo pipefail
+          mkdir -p creative-proof
+          capture() {
+            name="$1"; url="$2"; budget="$3"
+            "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars \
+              --window-size=540,960 --virtual-time-budget="$budget" \
+              --screenshot="creative-proof/${name}.png" "$url"
+          }
+          shotset() {
+            base="$1"; level="$2"; anomaly="$3"; reveal="$4"
+            root="http://127.0.0.1:8000/?creative=1&level=${level}"
+            capture "${base}-start" "$root" 300
+            capture "${base}-anomaly" "$root" "$anomaly"
+            capture "${base}-reveal" "${root}&revealAt=${anomaly}" "$reveal"
+          }
+          shotset shadow 0 2900 3500
+          shotset mirror 1 2500 3100
+          shotset domino 2 2400 3000
+      - name: Validate nine creative frames
+        run: python3 scripts/validate_pngs.py creative-proof
+      - uses: actions/upload-artifact@v4
+        with:
+          name: creative-916-proof-${{ github.sha }}
+          path: creative-proof/*.png
+          retention-days: 7
+          if-no-files-found: error
