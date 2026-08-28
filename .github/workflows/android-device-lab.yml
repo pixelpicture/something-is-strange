@@ -59,19 +59,13 @@ jobs:
             mkdir -p device-proof
             adb install -r android-device-lab/app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
-
-            # Android's one-time immersive-mode tutorial is OS state, not product UI.
-            # Pre-confirm it so measured frames contain only the app, then assert it stays absent.
             adb shell settings put secure immersive_mode_confirmations confirmed || true
-
             adb shell am force-stop com.pixelpicture.sisdevicelab
             adb shell am start -n com.pixelpicture.sisdevicelab/.MainActivity --es url 'file:///android_asset/index.html?level=0'
             sleep 1
             adb shell uiautomator dump /sdcard/device-window.xml >/dev/null 2>&1 || true
             adb pull /sdcard/device-window.xml device-proof/device-window.xml >/dev/null 2>&1 || true
-            if [ -s device-proof/device-window.xml ]; then
-              ! grep -qiE 'Viewing full screen|Got it' device-proof/device-window.xml
-            fi
+            grep -qiE 'Viewing full screen|Got it' device-proof/device-window.xml 2>/dev/null && exit 91 || true
             adb exec-out screencap -p > device-proof/shadow-start.png
             sleep 1.2
             adb exec-out screencap -p > device-proof/shadow-anomaly.png
