@@ -16,18 +16,16 @@ append_log(){ lab_log >> "$PROOF/device-log.txt"; }
 trap 'rc=$?; echo "[SIS_LAB_HOST] FAIL rc=$rc stage=${STAGE:-unknown}" >> "$PROOF/device-log.txt"; append_log; exit "$rc"' ERR
 wait_log(){ local p="$1" n="${2:-50}"; for _ in $(seq 1 "$n"); do lab_log|grep -Eq "$p"&&return 0; sleep .1; done; echo "Timed out: $p" >&2; append_log; return 1; }
 launch(){ local level="$1" creative="${2:-false}" acq="${3:-false}"; adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -n "$ACTIVITY" --ei level "$level" --ez creative "$creative" --ez acq "$acq" >/dev/null; }
-# A hosted API35 WebView cold start can occasionally take >5 s after APK install even though
-# later launches settle in <1 s. Keep the product's 5 s gameplay deadline untouched; only the
-# lab's readiness observation gets a bounded 12 s allowance so runner variance cannot create a
-# false product failure before the first frame exists.
-start_level(){ launch "$@"; wait_log '\[SIS_LAB\] READY' 120; }
-latest_state_line(){ lab_log|grep -E '\[SIS_LAB\] (READY|HOTSPOT|SCENE) '|tail -1||true; }
-latest_hotspot_xy(){ latest_state_line|sed -E 's/.*(READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'; }
+# The synchronous lab marker is emitted only after the real gameplay click handlers exist.
+# Waiting for it avoids spending the five-second challenge budget on extra rAF/logcat latency.
+start_level(){ launch "$@"; wait_log '\[SIS_LAB\] INTERACTION_READY' 120; }
+latest_state_line(){ lab_log|grep -E '\[SIS_LAB\] (INTERACTION_READY|READY|HOTSPOT|SCENE) '|tail -1||true; }
+latest_hotspot_xy(){ latest_state_line|sed -E 's/.*(INTERACTION_READY|READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'; }
 latest_wrong_xy(){ latest_state_line|sed -E 's/.* WRONG ([0-9]+) ([0-9]+).* DPR.*/\1 \2/'; }
-wait_mechanic_xy(){ local m="$1"; for _ in $(seq 1 40); do local l x; l=$(lab_log|grep -E "\[SIS_LAB\] (READY|HOTSPOT|SCENE) $m "|tail -1||true); x=$(echo "$l"|sed -E 's/.*(READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'); [[ "$x" =~ ^[0-9]+\ [0-9]+$ ]]&&{ echo "$x";return 0;}; sleep .1; done; return 1; }
+wait_mechanic_xy(){ local m="$1"; for _ in $(seq 1 40); do local l x; l=$(lab_log|grep -E "\[SIS_LAB\] (INTERACTION_READY|READY|HOTSPOT|SCENE) $m "|tail -1||true); x=$(echo "$l"|sed -E 's/.*(INTERACTION_READY|READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'); [[ "$x" =~ ^[0-9]+\ [0-9]+$ ]]&&{ echo "$x";return 0;}; sleep .1; done; return 1; }
 wait_next_xy(){ for _ in $(seq 1 30); do local x; x=$(lab_log|grep '\[SIS_LAB\] NEXT '|tail -1|sed -E 's/.*NEXT ([0-9]+) ([0-9]+).*/\1 \2/'||true); [[ "$x" =~ ^[0-9]+\ [0-9]+$ ]]&&{ echo "$x";return 0;}; sleep .1; done; return 1; }
 real_hotspot_tap(){ local x a b; x=$(latest_hotspot_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
-real_wrong_tap(){ local x a b; wait_log 'WRONG_TARGET tapLayer' 30; x=$(latest_wrong_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
+real_wrong_tap(){ local l x a b; l=$(latest_state_line); echo "$l"|grep -q 'WRONG_TARGET tapLayer'; x=$(echo "$l"|sed -E 's/.* WRONG ([0-9]+) ([0-9]+).* DPR.*/\1 \2/'); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
 real_next_tap(){ local x a b; x=$(wait_next_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
 shot_to(){ local o="$1"; for _ in $(seq 1 6); do adb exec-out screencap -p>"$o"; [ "$(wc -c<"$o")" -gt 25000 ]&&return 0; sleep .25; done; return 1; }
 shot(){ shot_to "$PROOF/$1.png"; }
@@ -97,10 +95,6 @@ echo '[SIS_LAB_HOST] BACKGROUND_RESUME_PASS' >> "$PROOF/device-log.txt"
 append_log
 
 STAGE=acquisition_motion
-# Force a genuinely fresh lab Activity for the acquisition URL. Plain am start can legally
-# bring the existing task to the front after the background/resume scenario, which means the
-# new URL is never delivered to onCreate. `-S` is lab launch hygiene only: it guarantees the
-# exact requested WebView document is loaded before capture without changing product code.
 adb logcat -c
 adb shell rm -f /sdcard/acq-raw.mp4 >/dev/null 2>&1 || true
 adb shell am start -S -n "$ACTIVITY" --es url 'file:///android_asset/index.html?level=0&creative=1&acq=1&labdelay=1' >/dev/null
