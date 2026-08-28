@@ -10,6 +10,8 @@
   const streak = document.getElementById('streak');
   const timer = document.getElementById('timer');
   let reportTimer = 0;
+  let visualTimer = 0;
+  let lastVisualKey = '';
   let acqBaseLogged = false;
   let acqTurnLogged = false;
   const started = performance.now();
@@ -36,10 +38,21 @@
   }
   function scheduleState(label) { clearTimeout(reportTimer); reportTimer=setTimeout(()=>reportState(label),80); }
   function visualReady(kind) {
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    clearTimeout(visualTimer);
+    visualTimer=setTimeout(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      const text=feedback.textContent.trim();
+      const key=[kind,text,nextBtn.hidden?'true':'false',streak.textContent.trim()].join('|');
+      if (key===lastVisualKey) return;
+      lastVisualKey=key;
       const fr=rectPx(feedback), nr=rectPx(nextBtn);
-      log('VISUAL_READY',kind,'FEEDBACK',feedback.textContent.trim(),'FB',fr.left,fr.top,fr.right,fr.bottom,'NEXT_HIDDEN',nextBtn.hidden?'true':'false','NEXT',nr.left,nr.top,nr.right,nr.bottom,'STREAK',streak.textContent.trim());
-    }));
+      log('VISUAL_READY',kind,'FEEDBACK',text,'FB',fr.left,fr.top,fr.right,fr.bottom,'NEXT_HIDDEN',nextBtn.hidden?'true':'false','NEXT',nr.left,nr.top,nr.right,nr.bottom,'STREAK',streak.textContent.trim());
+    })),20);
+  }
+  function classifyFeedback(text) {
+    if (!text) return '';
+    if (/^NO\b/i.test(text)) return 'WRONG';
+    if (!nextBtn.hidden) return 'CORRECT';
+    return '';
   }
   function traceAcq() {
     const sh=scene.querySelector('#shadowAcq');
@@ -54,8 +67,8 @@
   hotspot.addEventListener('click',()=>{ log('EVENT','HOTSPOT_CLICK'); setTimeout(()=>log('STATE',streak.textContent.trim(),feedback.textContent.trim()),60); visualReady('CORRECT'); });
   tapLayer.addEventListener('click',()=>{ log('EVENT','WRONG_TAP'); setTimeout(()=>log('STATE',streak.textContent.trim(),feedback.textContent.trim()),60); visualReady('WRONG'); });
   nextBtn.addEventListener('click',()=>log('EVENT','NEXT_TAP'));
-  new MutationObserver(()=>{ if(!nextBtn.hidden){const [x,y]=centerPx(nextBtn);log('NEXT',x,y);} }).observe(nextBtn,{attributes:true,attributeFilter:['hidden']});
-  new MutationObserver(()=>{const text=feedback.textContent.trim();if(text)log('FEEDBACK',text);}).observe(feedback,{childList:true,characterData:true,subtree:true});
+  new MutationObserver(()=>{ if(!nextBtn.hidden){const [x,y]=centerPx(nextBtn);log('NEXT',x,y); const kind=classifyFeedback(feedback.textContent.trim()); if(kind) visualReady(kind);} }).observe(nextBtn,{attributes:true,attributeFilter:['hidden']});
+  new MutationObserver(()=>{const text=feedback.textContent.trim();if(text){log('FEEDBACK',text); const kind=classifyFeedback(text); if(kind) visualReady(kind);}}).observe(feedback,{childList:true,characterData:true,subtree:true});
   new MutationObserver(()=>{ scheduleState('SCENE'); traceAcq(); }).observe(scene,{childList:true,subtree:true,attributes:true,attributeFilter:['d','transform','class']});
   new MutationObserver(()=>scheduleState('HOTSPOT')).observe(hotspot,{attributes:true,attributeFilter:['style']});
   traceAcq();
