@@ -41,7 +41,14 @@ public class MainActivity extends Activity {
         if (url == null || url.isEmpty()) {
             return "file:///android_asset/index.html?creative=1&level=0&acq=1";
         }
-        return url;
+        // The only explicit-url launch in this lab is the acquisition capture. adb shell can
+        // consume ampersand-separated query tails despite host quoting, so restore the lab-only
+        // acquisition flags here instead of depending on shell transport of a compound URL.
+        StringBuilder explicit = new StringBuilder(url);
+        if (!url.contains("creative=1")) explicit.append(url.contains("?") ? "&" : "?").append("creative=1");
+        if (!url.contains("acq=1")) explicit.append("&acq=1");
+        if (!url.contains("labdelay=1")) explicit.append("&labdelay=1");
+        return explicit.toString();
     }
 
     @Override
