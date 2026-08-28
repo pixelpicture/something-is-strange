@@ -36,15 +36,11 @@ jobs:
           record() {
             name="$1"; level="$2"; reveal_at="$3"; duration="$4"
             url="http://127.0.0.1:8000/?creative=1&level=${level}&revealAt=${reveal_at}"
-            "$CHROME" --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-infobars \
-              --disable-session-crashed-bubble --no-first-run --kiosk "$url" >/tmp/${name}-chrome.log 2>&1 &
+            "$CHROME" --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-infobars --disable-session-crashed-bubble --no-first-run --kiosk "$url" >/tmp/${name}-chrome.log 2>&1 &
             CPID=$!
             sleep 0.8
-            "$FFMPEG" -y -loglevel error -f x11grab -framerate 30 -video_size 540x960 \
-              -i :99.0 -t "$duration" -c:v libx264 -preset veryfast -crf 21 -pix_fmt yuv420p \
-              -movflags +faststart "creative-video/${name}.mp4"
+            "$FFMPEG" -y -loglevel error -f x11grab -framerate 30 -video_size 540x960 -i :99.0 -t "$duration" -c:v libx264 -preset veryfast -crf 21 -pix_fmt yuv420p -movflags +faststart "creative-video/${name}.mp4"
             kill "$CPID" || true
-            pkill -f 'google-chrome.*--kiosk' || true
             sleep 0.5
           }
           record shadow 0 3200 6.3
@@ -56,11 +52,7 @@ jobs:
           for f in creative-video/*.mp4; do
             test -s "$f"
             dur=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$f")
-            python3 - "$dur" <<'PY'
-import sys
-v=float(sys.argv[1])
-assert 5.5 <= v <= 7.0, v
-PY
+            python3 -c 'import sys; v=float(sys.argv[1]); assert 5.5 <= v <= 7.0, v' "$dur"
             base="${f%.mp4}"
             ffmpeg -y -loglevel error -ss 0.5 -i "$f" -frames:v 1 "${base}-start.png"
             ffmpeg -y -loglevel error -ss 3.0 -i "$f" -frames:v 1 "${base}-mid.png"
