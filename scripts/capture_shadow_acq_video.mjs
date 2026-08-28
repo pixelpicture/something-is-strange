@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const base = 'http://127.0.0.1:8000/';
 const debug = 'http://127.0.0.1:9222';
 const outDir = 'shadow-video';
-const frameCount = 43;
+const frameCount = 34;
 const frameStepMs = 100;
 fs.mkdirSync(outDir, { recursive: true });
 
@@ -99,7 +99,7 @@ const browser = await browserClient();
 let page;
 let targetId;
 try {
-  const url = `${base}?creative=1&level=0&revealAt=2550&acq=1`;
+  const url = `${base}?creative=1&level=0&revealAt=2250&acq=1`;
   ({ targetId } = await browser.send('Target.createTarget', { url }));
   page = await pageClientForTarget(targetId);
   await waitForReady(page);
