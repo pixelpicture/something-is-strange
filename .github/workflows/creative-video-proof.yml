@@ -38,9 +38,16 @@ jobs:
             name="$1"; level="$2"; reveal_at="$3"; port="$4"
             url="http://127.0.0.1:8000/?creative=1&level=${level}&revealAt=${reveal_at}"
             encoded=$(python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$url")
-            "$CHROME" --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-infobars --disable-session-crashed-bubble --no-first-run --kiosk --window-position=0,0 --window-size=540,960 --remote-debugging-port="$port" about:blank >/tmp/${name}-chrome.log 2>&1 &
+            profile="/tmp/sis-chrome-${name}"
+            rm -rf "$profile"
+            "$CHROME" --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-infobars --disable-session-crashed-bubble --no-first-run --kiosk --window-position=0,0 --window-size=540,960 --user-data-dir="$profile" --remote-debugging-address=127.0.0.1 --remote-debugging-port="$port" about:blank >/tmp/${name}-chrome.log 2>&1 &
             CPID=$!
-            for i in {1..40}; do curl -fsS "http://127.0.0.1:${port}/json/version" >/dev/null 2>&1 && break; sleep 0.1; done
+            ready=0
+            for i in {1..60}; do
+              if curl -fsS "http://127.0.0.1:${port}/json/version" >/dev/null 2>&1; then ready=1; break; fi
+              sleep 0.1
+            done
+            if [ "$ready" != 1 ]; then cat /tmp/${name}-chrome.log; exit 1; fi
             ffmpeg -y -loglevel error -f x11grab -draw_mouse 0 -framerate 30 -video_size 540x960 -i :99.0 -t 5.1 -c:v libx264 -preset veryfast -crf 21 -pix_fmt yuv420p "/tmp/${name}-raw.mp4" &
             FPID=$!
             sleep 0.20
@@ -48,6 +55,7 @@ jobs:
             wait "$FPID"
             ffmpeg -y -loglevel error -ss 0.38 -i "/tmp/${name}-raw.mp4" -t 4.4 -c:v libx264 -preset veryfast -crf 21 -pix_fmt yuv420p -movflags +faststart "creative-video/${name}.mp4"
             kill "$CPID" || true
+            rm -rf "$profile"
             sleep 0.35
           }
           record shadow 0 3000 9222
