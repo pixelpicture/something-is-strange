@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 PKG=com.pixelpicture.sisdevicelab
 ACTIVITY="$PKG/.MainActivity"
 PROOF=device-proof
@@ -16,14 +16,18 @@ append_log(){ lab_log >> "$PROOF/device-log.txt"; }
 trap 'rc=$?; echo "[SIS_LAB_HOST] FAIL rc=$rc stage=${STAGE:-unknown}" >> "$PROOF/device-log.txt"; append_log; exit "$rc"' ERR
 wait_log(){ local p="$1" n="${2:-50}"; for _ in $(seq 1 "$n"); do lab_log|grep -Eq "$p"&&return 0; sleep .1; done; echo "Timed out: $p" >&2; append_log; return 1; }
 launch(){ local level="$1" creative="${2:-false}" acq="${3:-false}"; adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -n "$ACTIVITY" --ei level "$level" --ez creative "$creative" --ez acq "$acq" >/dev/null; }
-start_level(){ launch "$@"; wait_log '\[SIS_LAB\] READY' 50; }
+# A hosted API35 WebView cold start can occasionally take >5 s after APK install even though
+# later launches settle in <1 s. Keep the product's 5 s gameplay deadline untouched; only the
+# lab's readiness observation gets a bounded 12 s allowance so runner variance cannot create a
+# false product failure before the first frame exists.
+start_level(){ launch "$@"; wait_log '\[SIS_LAB\] READY' 120; }
 latest_state_line(){ lab_log|grep -E '\[SIS_LAB\] (READY|HOTSPOT|SCENE) '|tail -1||true; }
 latest_hotspot_xy(){ latest_state_line|sed -E 's/.*(READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'; }
 latest_wrong_xy(){ latest_state_line|sed -E 's/.* WRONG ([0-9]+) ([0-9]+).* DPR.*/\1 \2/'; }
 wait_mechanic_xy(){ local m="$1"; for _ in $(seq 1 40); do local l x; l=$(lab_log|grep -E "\[SIS_LAB\] (READY|HOTSPOT|SCENE) $m "|tail -1||true); x=$(echo "$l"|sed -E 's/.*(READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'); [[ "$x" =~ ^[0-9]+\ [0-9]+$ ]]&&{ echo "$x";return 0;}; sleep .1; done; return 1; }
 wait_next_xy(){ for _ in $(seq 1 30); do local x; x=$(lab_log|grep '\[SIS_LAB\] NEXT '|tail -1|sed -E 's/.*NEXT ([0-9]+) ([0-9]+).*/\1 \2/'||true); [[ "$x" =~ ^[0-9]+\ [0-9]+$ ]]&&{ echo "$x";return 0;}; sleep .1; done; return 1; }
 real_hotspot_tap(){ local x a b; x=$(latest_hotspot_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
-real_wrong_tap(){ local x a b; lab_log|grep -q 'WRONG_TARGET tapLayer'; x=$(latest_wrong_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
+real_wrong_tap(){ local x a b; wait_log 'WRONG_TARGET tapLayer' 30; x=$(latest_wrong_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
 real_next_tap(){ local x a b; x=$(wait_next_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
 shot_to(){ local o="$1"; for _ in $(seq 1 6); do adb exec-out screencap -p>"$o"; [ "$(wc -c<"$o")" -gt 25000 ]&&return 0; sleep .25; done; return 1; }
 shot(){ shot_to "$PROOF/$1.png"; }
@@ -101,11 +105,11 @@ adb logcat -c
 adb shell am force-stop "$PKG"
 adb shell rm -f /sdcard/acq-raw.mp4 >/dev/null 2>&1 || true
 adb shell am start -n "$ACTIVITY" --es url 'file:///android_asset/index.html?level=0&creative=1&acq=1&labdelay=1' >/dev/null
-wait_log '\[SIS_LAB\] ACQ_DELAY_ARMED 1500' 50
-wait_log '\[SIS_LAB\] ACQ_BASE' 50
+wait_log '\[SIS_LAB\] ACQ_DELAY_ARMED 1500' 120
+wait_log '\[SIS_LAB\] ACQ_BASE' 120
 adb shell screenrecord --bit-rate 4000000 --time-limit 5 /sdcard/acq-raw.mp4 >/dev/null 2>&1 &
 REC_PID=$!
-wait_log '\[SIS_LAB\] ACQ_TURN' 70
+wait_log '\[SIS_LAB\] ACQ_TURN' 100
 wait "$REC_PID"
 adb pull /sdcard/acq-raw.mp4 "$PROOF/acq-raw.mp4" >/dev/null
 ffmpeg -v error -y -ss 1.35 -i "$PROOF/acq-raw.mp4" -t 3.2 -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$PROOF/shadow-device.mp4"
