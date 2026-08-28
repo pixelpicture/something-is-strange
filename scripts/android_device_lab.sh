@@ -6,6 +6,13 @@ PROOF=device-proof
 LOG_TAG=SIS_DEVICE_LAB
 mkdir -p "$PROOF"; : > "$PROOF/device-log.txt"
 adb install -r android-device-lab/app/build/outputs/apk/debug/app-debug.apk
+# The hosted emulator can surface launcher/Quickstep ANR dialogs during boot even while
+# our lab Activity is healthy. These are OS harness noise, not product UI, and they can
+# steal taps/screenshots. Suppress system crash/ANR dialogs before any measured frame.
+adb shell settings put global hide_error_dialogs 1 || true
+adb shell settings put global show_first_crash_dialog 0 || true
+adb shell settings put global show_restart_in_crash_dialog 0 || true
+adb shell settings put global anr_show_background 0 || true
 adb shell settings put secure immersive_mode_confirmations confirmed || true
 lab_log(){ adb logcat -d -s "$LOG_TAG:I" '*:S' 2>/dev/null || true; }
 append_log(){ lab_log >> "$PROOF/device-log.txt"; }
@@ -34,7 +41,7 @@ sleep .25
 shot shadow-wrongtap
 adb shell uiautomator dump /sdcard/device-window.xml >/dev/null 2>&1||true
 adb pull /sdcard/device-window.xml "$PROOF/device-window.xml" >/dev/null 2>&1||true
-! grep -qiE 'Viewing full screen|Got it' "$PROOF/device-window.xml" 2>/dev/null
+! grep -qiE 'Viewing full screen|Got it|isn.t responding|Close app|App info' "$PROOF/device-window.xml" 2>/dev/null
 append_log
 
 STAGE=three_level_cycle
