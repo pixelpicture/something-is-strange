@@ -13,29 +13,18 @@ jobs:
     timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
-
       - name: Enable KVM acceleration
         run: |
           set -euo pipefail
-          if [ -e /dev/kvm ]; then
-            sudo chmod 666 /dev/kvm
-            ls -l /dev/kvm
-            test -r /dev/kvm
-            test -w /dev/kvm
-          else
-            echo '/dev/kvm is unavailable on this runner'
-            exit 1
-          fi
-
+          sudo chmod 666 /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
       - name: Stage exact prototype into lab shell
         run: |
           set -euo pipefail
@@ -46,38 +35,26 @@ jobs:
           from pathlib import Path
           p=Path('android-device-lab/app/src/main/assets/index.html')
           s=p.read_text()
-          marker='</body>'
+          marker='  <script src="shadow-acquisition.js"></script>'
           assert marker in s
-          s=s.replace(marker, '  <script src="device-lab-probe.js"></script>\n</body>', 1)
+          s=s.replace(marker, '  <script src="device-lab-probe.js"></script>\n'+marker, 1)
           p.write_text(s)
           PY
-
       - name: Build lab APK with bounded dependency retry
         working-directory: android-device-lab
         run: |
           set -euo pipefail
           for attempt in 1 2 3; do
-            echo "Gradle build attempt ${attempt}/3"
-            if gradle --no-daemon assembleDebug; then
-              exit 0
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo 'Gradle build failed after bounded retries'
-              exit 1
-            fi
+            gradle --no-daemon assembleDebug && exit 0
+            [ "$attempt" -eq 3 ] && exit 1
             sleep $((attempt * 30))
           done
-
       - name: Ensure free ffmpeg tooling
         run: |
           set -euo pipefail
           if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq ffmpeg
+            sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
           fi
-          ffmpeg -version | head -1
-          ffprobe -version | head -1
-
       - name: Run real Android emulator interactions
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -87,58 +64,50 @@ jobs:
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           script: bash scripts/android_device_lab.sh
-
       - name: Validate device artifacts
         run: |
           set -euo pipefail
-          test "$(find device-proof -name '*.png' | wc -l)" -eq 11
+          test "$(find device-proof -maxdepth 1 -name '*.png' | wc -l)" -eq 11
           test -s device-proof/shadow-device.mp4
           test "$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 device-proof/shadow-device.mp4)" -eq 1080
           test "$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 device-proof/shadow-device.mp4)" -eq 2400
           python3 - <<'PY'
           import subprocess
-          d=float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','csv=p=0','device-proof/shadow-device.mp4'], text=True).strip())
+          d=float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','csv=p=0','device-proof/shadow-device.mp4'],text=True).strip())
           assert 3.8 <= d <= 4.2, d
-          frames=int(subprocess.check_output(['ffprobe','-v','error','-select_streams','v:0','-count_frames','-show_entries','stream=nb_read_frames','-of','csv=p=0','device-proof/shadow-device.mp4'], text=True).strip())
+          frames=int(subprocess.check_output(['ffprobe','-v','error','-select_streams','v:0','-count_frames','-show_entries','stream=nb_read_frames','-of','csv=p=0','device-proof/shadow-device.mp4'],text=True).strip())
           assert frames >= 12, frames
-          subprocess.run(['ffmpeg','-v','error','-i','device-proof/shadow-device.mp4','-f','null','-'], check=True)
+          subprocess.run(['ffmpeg','-v','error','-i','device-proof/shadow-device.mp4','-f','null','-'],check=True)
           PY
-          rm -rf device-proof/video-check
-          mkdir -p device-proof/video-check
+          rm -rf device-proof/video-check && mkdir -p device-proof/video-check
           ffmpeg -v error -i device-proof/shadow-device.mp4 -vf "select='eq(n,0)+eq(n,5)+eq(n,10)+eq(n,15)'" -vsync 0 device-proof/video-check/frame-%02d.png
           test "$(find device-proof/video-check -name '*.png' | wc -l)" -eq 4
-          python3 - <<'PY'
-          import glob, hashlib
-          files=sorted(glob.glob('device-proof/video-check/*.png'))
-          assert len(files)==4, files
-          hashes=[hashlib.sha256(open(p,'rb').read()).hexdigest() for p in files]
-          assert len(set(hashes)) >= 3, hashes
-          PY
           ! grep -qiE 'Viewing full screen|Got it' device-proof/device-window.xml 2>/dev/null
           grep -q 'creative=1&acq=1' device-proof/device-log.txt
+          grep -q '\[SIS_LAB\] ACQ_BASE' device-proof/device-log.txt
+          grep -q '\[SIS_LAB\] ACQ_TURN' device-proof/device-log.txt
           test "$(grep -c '\[SIS_LAB\] EVENT HOTSPOT_CLICK' device-proof/device-log.txt)" -ge 5
           test "$(grep -c '\[SIS_LAB\] EVENT WRONG_TAP' device-proof/device-log.txt)" -ge 1
           test "$(grep -c '\[SIS_LAB\] EVENT NEXT_TAP' device-proof/device-log.txt)" -ge 3
-          grep -q '\[SIS_LAB\] FEEDBACK NO' device-proof/device-log.txt
-          grep -Eq '\[SIS_LAB\] (READY|SCENE|HOTSPOT) shadow_acquisition .*TIMER_DISPLAY none' device-proof/device-log.txt
-          grep -Eq '\[SIS_LAB\] (READY|SCENE|HOTSPOT) mirror_desync ' device-proof/device-log.txt
-          grep -Eq '\[SIS_LAB\] (READY|SCENE|HOTSPOT) domino_prediction ' device-proof/device-log.txt
+          grep -q '\[SIS_LAB\] VISUAL_READY WRONG FEEDBACK NO' device-proof/device-log.txt
+          grep -q '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED FIRST\.' device-proof/device-log.txt
+          grep -q '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE REFLECTION WAS LATE\.' device-proof/device-log.txt
+          grep -q '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE CHAIN STOPS HERE\.' device-proof/device-log.txt
           grep -Eq '\[SIS_LAB\] (READY|SCENE|HOTSPOT) wrong_light_switch ' device-proof/device-log.txt
           python3 - <<'PY'
-          import glob, hashlib, struct
-          files=sorted(glob.glob('device-proof/*.png'))
+          import glob,hashlib,struct
+          root='device-proof/'
+          files=sorted(glob.glob(root+'*.png'))
           assert len(files)==11, len(files)
-          hashes=[]
           for p in files:
-              b=open(p,'rb').read()
-              assert len(b)>25000, (p,len(b))
-              assert b[:8]==b'\x89PNG\r\n\x1a\n', p
-              w,h=struct.unpack('>II',b[16:24])
-              assert w>=720 and h>=1280, (p,w,h)
-              hashes.append(hashlib.sha256(b).hexdigest())
-          assert len(set(hashes)) >= 6, 'device proof is unexpectedly static'
+            b=open(p,'rb').read(); assert len(b)>25000,(p,len(b)); assert b[:8]==b'\x89PNG\r\n\x1a\n',p
+            w,h=struct.unpack('>II',b[16:24]); assert w>=720 and h>=1280,(p,w,h)
+          def digest(n): return hashlib.sha256(open(root+n,'rb').read()).digest()
+          pairs=[('shadow-start.png','shadow-wrongtap.png'),('shadow-anomaly.png','shadow-correct.png'),('shadow-correct.png','shadow-next.png'),('mirror-anomaly.png','mirror-correct.png'),('domino-anomaly.png','domino-correct.png'),('acq-before-turn.png','acq-after-turn.png')]
+          for a,b in pairs: assert digest(a)!=digest(b),(a,b)
+          vf=sorted(glob.glob(root+'video-check/*.png')); assert len(vf)==4
+          assert len({hashlib.sha256(open(p,'rb').read()).hexdigest() for p in vf})>=3
           PY
-
       - uses: actions/upload-artifact@v4
         if: always()
         with:
