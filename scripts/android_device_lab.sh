@@ -97,14 +97,13 @@ echo '[SIS_LAB_HOST] BACKGROUND_RESUME_PASS' >> "$PROOF/device-log.txt"
 append_log
 
 STAGE=acquisition_motion
-# Launch the real acquisition scene first, but use the lab-only injected probe to postpone
-# all acquisition timers by exactly 1.5 s. Start Android's compositor recorder only after
-# WebView/scene readiness, then trim that exact pre-roll. Relative 450/900/1300/1350 ms
-# production motion is therefore preserved while launcher/WebView startup is excluded.
+# Force a genuinely fresh lab Activity for the acquisition URL. Plain am start can legally
+# bring the existing task to the front after the background/resume scenario, which means the
+# new URL is never delivered to onCreate. `-S` is lab launch hygiene only: it guarantees the
+# exact requested WebView document is loaded before capture without changing product code.
 adb logcat -c
-adb shell am force-stop "$PKG"
 adb shell rm -f /sdcard/acq-raw.mp4 >/dev/null 2>&1 || true
-adb shell am start -n "$ACTIVITY" --es url 'file:///android_asset/index.html?level=0&creative=1&acq=1&labdelay=1' >/dev/null
+adb shell am start -S -n "$ACTIVITY" --es url 'file:///android_asset/index.html?level=0&creative=1&acq=1&labdelay=1' >/dev/null
 wait_log '\[SIS_LAB\] ACQ_DELAY_ARMED 1500' 120
 wait_log '\[SIS_LAB\] ACQ_BASE' 120
 adb shell screenrecord --bit-rate 4000000 --time-limit 5 /sdcard/acq-raw.mp4 >/dev/null 2>&1 &
