@@ -88,9 +88,8 @@ real_next_tap() {
   adb shell input tap "$x" "$y"
 }
 
-shot() {
-  local name="$1"
-  local out="$PROOF/$name.png"
+shot_to() {
+  local out="$1"
   for _ in $(seq 1 6); do
     adb exec-out screencap -p > "$out"
     local bytes
@@ -100,8 +99,12 @@ shot() {
     fi
     sleep 0.25
   done
-  echo "Screenshot stayed blank/splash-sized: $name ($(wc -c < "$out") bytes)" >&2
+  echo "Screenshot stayed blank/splash-sized: $out ($(wc -c < "$out") bytes)" >&2
   return 1
+}
+
+shot() {
+  shot_to "$PROOF/$1.png"
 }
 
 # Shadow cold launch + early wrong tap before anomaly/timeout.
@@ -158,16 +161,23 @@ sleep 1.1
 shot domino-correct
 append_log
 
-# Acquisition: exact Shadow acquisition query after semantic DOM readiness.
+# Acquisition stills: exact Shadow acquisition runtime on the real Android surface.
 start_level 0 true true
-sleep 0.4
-adb shell 'screenrecord --time-limit 5 /sdcard/shadow-device.mp4 >/dev/null 2>&1 &' >/dev/null
-sleep 0.6
 shot acq-before-turn
-sleep 0.8
+sleep 0.85
 shot acq-after-turn
-sleep 4.0
-adb pull /sdcard/shadow-device.mp4 "$PROOF/shadow-device.mp4" >/dev/null
+append_log
+
+# Acquisition motion proof: build the MP4 only from consecutive real Android screencaps.
+# This avoids the headless emulator's screenrecord black-lead bug without substituting browser-rendered frames.
+start_level 0 true true
+TMP_FRAMES=$(mktemp -d)
+for i in $(seq -w 0 15); do
+  shot_to "$TMP_FRAMES/frame-$i.png"
+  sleep 0.12
+done
+ffmpeg -v error -y -framerate 4 -i "$TMP_FRAMES/frame-%02d.png" -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$PROOF/shadow-device.mp4"
+rm -rf "$TMP_FRAMES"
 append_log
 
 grep -q 'LOAD file:///android_asset/index.html' "$PROOF/device-log.txt"
