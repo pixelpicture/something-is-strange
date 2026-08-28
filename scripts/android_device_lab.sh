@@ -43,7 +43,12 @@ sleep 1.9; shot shadow-anomaly
 real_hotspot_tap
 wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED FIRST\.' 50
 sleep .55; shot shadow-correct
-real_next_tap; wait_mechanic_xy mirror_desync >/dev/null; sleep .25; shot shadow-next
+real_next_tap
+wait_mechanic_xy mirror_desync >/dev/null
+# Android's compositor can briefly return the previous buffer immediately after a DOM transition.
+# Give the new level one full render window before preserving semantic evidence.
+sleep 1.0
+shot shadow-next
 mirror_xy=$(wait_mechanic_xy mirror_desync); read -r mx my<<<"$mirror_xy"; adb shell input tap "$mx" "$my"; wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE REFLECTION WAS LATE\.' 50
 real_next_tap; wait_mechanic_xy domino_prediction >/dev/null
 domino_xy=$(wait_mechanic_xy domino_prediction); read -r dx dy<<<"$domino_xy"; adb shell input tap "$dx" "$dy"; wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE CHAIN STOPS HERE\.' 50
