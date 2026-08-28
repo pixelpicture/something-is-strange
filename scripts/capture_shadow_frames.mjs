@@ -8,75 +8,104 @@ fs.mkdirSync(outDir, { recursive: true });
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-async function waitForPageTarget() {
+class CdpClient {
+  constructor(url) {
+    this.ws = new WebSocket(url);
+    this.nextId = 1;
+    this.pending = new Map();
+    this.listeners = new Map();
+  }
+
+  async open() {
+    await new Promise((resolve, reject) => {
+      this.ws.onopen = resolve;
+      this.ws.onerror = reject;
+    });
+    this.ws.onmessage = evt => {
+      const msg = JSON.parse(evt.data);
+      if (msg.id) {
+        const p = this.pending.get(msg.id);
+        if (!p) return;
+        this.pending.delete(msg.id);
+        if (msg.error) p.reject(new Error(JSON.stringify(msg.error)));
+        else p.resolve(msg.result);
+        return;
+      }
+      if (msg.method) for (const fn of this.listeners.get(msg.method) || []) fn(msg.params);
+    };
+  }
+
+  on(method, fn) {
+    if (!this.listeners.has(method)) this.listeners.set(method, []);
+    this.listeners.get(method).push(fn);
+  }
+
+  once(method, timeoutMs = 10000) {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const arr = this.listeners.get(method) || [];
+        const idx = arr.indexOf(fn);
+        if (idx >= 0) arr.splice(idx, 1);
+        reject(new Error(`Timed out waiting for ${method}`));
+      }, timeoutMs);
+      const fn = params => {
+        clearTimeout(timer);
+        const arr = this.listeners.get(method) || [];
+        const idx = arr.indexOf(fn);
+        if (idx >= 0) arr.splice(idx, 1);
+        resolve(params);
+      };
+      this.on(method, fn);
+    });
+  }
+
+  send(method, params = {}) {
+    const id = this.nextId++;
+    this.ws.send(JSON.stringify({ id, method, params }));
+    return new Promise((resolve, reject) => this.pending.set(id, { resolve, reject }));
+  }
+
+  close() { this.ws.close(); }
+}
+
+async function browserClient() {
   for (let i = 0; i < 100; i++) {
     try {
-      const list = await fetch(`${debug}/json/list`).then(r => r.json());
-      const page = list.find(x => x.type === 'page' && x.webSocketDebuggerUrl);
-      if (page) return page;
+      const version = await fetch(`${debug}/json/version`).then(r => r.json());
+      if (version.webSocketDebuggerUrl) {
+        const client = new CdpClient(version.webSocketDebuggerUrl);
+        await client.open();
+        return client;
+      }
     } catch {}
     await sleep(100);
   }
-  throw new Error('Chrome DevTools page target not ready');
+  throw new Error('Chrome browser DevTools endpoint not ready');
 }
 
-const target = await waitForPageTarget();
-const ws = new WebSocket(target.webSocketDebuggerUrl);
-let nextId = 1;
-const pending = new Map();
-const listeners = new Map();
-
-function on(method, fn) {
-  if (!listeners.has(method)) listeners.set(method, []);
-  listeners.get(method).push(fn);
-}
-
-function once(method) {
-  return new Promise(resolve => {
-    const fn = params => {
-      const arr = listeners.get(method) || [];
-      const idx = arr.indexOf(fn);
-      if (idx >= 0) arr.splice(idx, 1);
-      resolve(params);
-    };
-    on(method, fn);
-  });
-}
-
-function send(method, params = {}) {
-  const id = nextId++;
-  ws.send(JSON.stringify({ id, method, params }));
-  return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
-}
-
-await new Promise((resolve, reject) => {
-  ws.onopen = resolve;
-  ws.onerror = reject;
-});
-
-ws.onmessage = evt => {
-  const msg = JSON.parse(evt.data);
-  if (msg.id) {
-    const p = pending.get(msg.id);
-    if (!p) return;
-    pending.delete(msg.id);
-    if (msg.error) p.reject(new Error(JSON.stringify(msg.error)));
-    else p.resolve(msg.result);
-    return;
+async function pageClientForTarget(targetId) {
+  for (let i = 0; i < 100; i++) {
+    const list = await fetch(`${debug}/json/list`).then(r => r.json());
+    const page = list.find(x => x.id === targetId && x.type === 'page' && x.webSocketDebuggerUrl);
+    if (page) {
+      const client = new CdpClient(page.webSocketDebuggerUrl);
+      await client.open();
+      await client.send('Page.enable');
+      await client.send('Emulation.setDeviceMetricsOverride', {
+        width: 540,
+        height: 960,
+        deviceScaleFactor: 1,
+        mobile: false
+      });
+      return client;
+    }
+    await sleep(100);
   }
-  if (msg.method) for (const fn of listeners.get(msg.method) || []) fn(msg.params);
-};
+  throw new Error(`Page target ${targetId} not ready`);
+}
 
-await send('Page.enable');
-await send('Emulation.setDeviceMetricsOverride', {
-  width: 540,
-  height: 960,
-  deviceScaleFactor: 1,
-  mobile: false
-});
-
-async function screenshot(variant, ms) {
-  const shot = await send('Page.captureScreenshot', { format: 'png', fromSurface: true });
+async function screenshot(client, variant, ms) {
+  const shot = await client.send('Page.captureScreenshot', { format: 'png', fromSurface: true });
   const file = `${outDir}/${variant}-t${ms}.png`;
   fs.writeFileSync(file, Buffer.from(shot.data, 'base64'));
   const size = fs.statSync(file).size;
@@ -84,29 +113,35 @@ async function screenshot(variant, ms) {
   console.log(file, size);
 }
 
-async function captureVariant(variant) {
+async function captureVariant(browser, variant) {
   const reveal = variant === 'baseline' ? 3000 : 2550;
   const extra = variant === 'acquisition' ? '&acq=1' : '';
   const url = `${base}?creative=1&level=0&revealAt=${reveal}${extra}`;
 
-  const loaded = once('Page.loadEventFired');
-  await send('Page.navigate', { url });
+  const { targetId } = await browser.send('Target.createTarget', { url: 'about:blank' });
+  const page = await pageClientForTarget(targetId);
+  const loaded = page.once('Page.loadEventFired');
+  await page.send('Page.navigate', { url });
   await loaded;
 
   const start = Date.now();
-  let elapsedTarget = 0;
+  let previousMark = 0;
   for (const mark of marks) {
-    const wait = Math.max(0, mark - elapsedTarget);
+    const wait = Math.max(0, mark - previousMark);
     if (wait) await sleep(wait);
-    await screenshot(variant, mark);
-    elapsedTarget = mark;
+    await screenshot(page, variant, mark);
+    previousMark = mark;
   }
+  console.log(`${variant} capture elapsed=${Date.now() - start}ms target=${targetId}`);
 
-  console.log(`${variant} capture elapsed=${Date.now() - start}ms`);
+  page.close();
+  await browser.send('Target.closeTarget', { targetId });
 }
 
-for (const variant of ['baseline', 'acquisition']) {
-  await captureVariant(variant);
+const browser = await browserClient();
+try {
+  await captureVariant(browser, 'baseline');
+  await captureVariant(browser, 'acquisition');
+} finally {
+  browser.close();
 }
-
-ws.close();
