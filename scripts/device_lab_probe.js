@@ -28,13 +28,23 @@
     return 'unknown';
   }
   function safeWrongPoint() {
-    const s=rectPx(sceneWrap), h=rectPx(hotspot), px=Math.max(24,Math.round((s.right-s.left)*.12)), py=Math.max(24,Math.round((s.bottom-s.top)*.12));
-    const cs=[[s.left+px,s.top+py],[s.right-px,s.top+py],[s.left+px,s.bottom-py],[s.right-px,s.bottom-py]], m=16;
-    return cs.find(([x,y])=>x<h.left-m||x>h.right+m||y<h.top-m||y>h.bottom+m)||cs[0];
+    const s=sceneWrap.getBoundingClientRect(), h=hotspot.getBoundingClientRect(), scale=dpr();
+    const xs=[.18,.32,.50,.68,.82], ys=[.18,.32,.50,.68,.82];
+    for (const yf of ys) for (const xf of xs) {
+      const cx=s.left+s.width*xf, cy=s.top+s.height*yf;
+      const margin=8;
+      const outsideHotspot=cx<h.left-margin||cx>h.right+margin||cy<h.top-margin||cy>h.bottom+margin;
+      const target=document.elementFromPoint(cx,cy);
+      if (outsideHotspot && (target===tapLayer || tapLayer.contains(target))) {
+        return [Math.round(cx*scale),Math.round(cy*scale),target.id||target.tagName||'unknown'];
+      }
+    }
+    const cx=s.left+s.width*.18, cy=s.top+s.height*.18, target=document.elementFromPoint(cx,cy);
+    return [Math.round(cx*scale),Math.round(cy*scale),(target&& (target.id||target.tagName))||'unknown'];
   }
   function reportState(label) {
-    const [x,y]=centerPx(hotspot),[wx,wy]=safeWrongPoint();
-    log(label,mechanic(),x,y,'WRONG',wx,wy,'DPR',dpr(),'SCENE_CHILDREN',scene.childElementCount,'PROMPT',prompt.textContent.trim(),'STREAK',streak.textContent.trim(),'TIMER_DISPLAY',getComputedStyle(timer).display);
+    const [x,y]=centerPx(hotspot),[wx,wy,wt]=safeWrongPoint();
+    log(label,mechanic(),x,y,'WRONG',wx,wy,'WRONG_TARGET',wt,'DPR',dpr(),'SCENE_CHILDREN',scene.childElementCount,'PROMPT',prompt.textContent.trim(),'STREAK',streak.textContent.trim(),'TIMER_DISPLAY',getComputedStyle(timer).display);
   }
   function scheduleState(label) { clearTimeout(reportTimer); reportTimer=setTimeout(()=>reportState(label),80); }
   function visualReady(kind) {
