@@ -1,4 +1,4 @@
-name: Creative Video Proof
+name: Shadow Acquisition Frame Proof
 
 on:
   push:
@@ -7,73 +7,44 @@ on:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Resolve local tools
+      - name: Resolve Chrome
         run: |
           set -euo pipefail
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || true)"
           test -n "$CHROME"
-          if ! command -v ffmpeg >/dev/null 2>&1; then
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq ffmpeg
-          fi
           echo "CHROME=$CHROME" >> "$GITHUB_ENV"
       - name: Serve prototype
         run: |
           python3 -m http.server 8000 >/tmp/sis-http.log 2>&1 &
           for i in {1..20}; do curl -fsS http://127.0.0.1:8000/ >/dev/null && exit 0; sleep 0.2; done
           cat /tmp/sis-http.log; exit 1
-      - name: Render deterministic 10fps browser frames
+      - name: Capture deterministic A/B frames
         run: |
           set -euo pipefail
-          mkdir -p creative-video
-          render() {
-            name="$1"; level="$2"; reveal_at="$3"; extra="${4:-}"
-            dir="creative-video/${name}-frames"
-            mkdir -p "$dir"
-            for i in $(seq 0 42); do
-              budget=$((100 + i * 100))
-              file=$(printf '%s/frame-%03d.png' "$dir" "$i")
-              "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars \
-                --window-size=540,960 --virtual-time-budget="$budget" \
-                --run-all-compositor-stages-before-draw \
-                --screenshot="$file" \
-                "http://127.0.0.1:8000/?creative=1&level=${level}&revealAt=${reveal_at}${extra}" >/dev/null 2>&1
-              test "$(stat -c%s "$file")" -gt 5000
+          mkdir -p shadow-proof
+          for variant in baseline acquisition; do
+            if [ "$variant" = baseline ]; then reveal=3000; extra=''; else reveal=2550; extra='&acq=1'; fi
+            for ms in 200 1200 1700 2500 3500; do
+              out="shadow-proof/${variant}-t${ms}.png"
+              "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=540,960 \
+                --virtual-time-budget="$ms" --run-all-compositor-stages-before-draw --screenshot="$out" \
+                "http://127.0.0.1:8000/?creative=1&level=0&revealAt=${reveal}${extra}" >/dev/null 2>&1
+              test "$(stat -c%s "$out")" -gt 5000
             done
-            if cmp -s "$dir/frame-000.png" "$dir/frame-042.png"; then
-              echo "${name}: first and last frames are identical" >&2
-              exit 1
-            fi
-            ffmpeg -y -loglevel error -framerate 10 -i "$dir/frame-%03d.png" \
-              -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p -movflags +faststart \
-              "creative-video/${name}.mp4"
-          }
-          render shadow-baseline 0 3000
-          render shadow-acq 0 2550 '&acq=1'
-      - name: Validate videos and preserve review frames
+          done
+      - name: Validate physical change
         run: |
           set -euo pipefail
-          for name in shadow-baseline shadow-acq; do
-            f="creative-video/${name}.mp4"
-            test "$(stat -c%s "$f")" -gt 20000
-            dur=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$f")
-            python3 -c 'import sys; v=float(sys.argv[1]); assert 4.2 <= v <= 4.4, v' "$dur"
-            cp "creative-video/${name}-frames/frame-001.png" "creative-video/${name}-t020.png"
-            cp "creative-video/${name}-frames/frame-011.png" "creative-video/${name}-t120.png"
-            cp "creative-video/${name}-frames/frame-016.png" "creative-video/${name}-t170.png"
-            cp "creative-video/${name}-frames/frame-024.png" "creative-video/${name}-t250.png"
-            cp "creative-video/${name}-frames/frame-034.png" "creative-video/${name}-t350.png"
+          for variant in baseline acquisition; do
+            cmp -s "shadow-proof/${variant}-t200.png" "shadow-proof/${variant}-t3500.png" && exit 1 || true
           done
-      - name: Remove source frame sequences
-        if: always()
-        run: rm -rf creative-video/*-frames
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: shadow-acquisition-proof-${{ github.sha }}
-          path: creative-video/*
+          name: shadow-acquisition-frame-proof-${{ github.sha }}
+          path: shadow-proof/*.png
           retention-days: 7
-          if-no-files-found: warn
+          if-no-files-found: error
