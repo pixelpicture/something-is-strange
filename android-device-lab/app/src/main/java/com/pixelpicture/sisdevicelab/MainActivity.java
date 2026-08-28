@@ -30,9 +30,11 @@ public class MainActivity extends Activity {
             int level = intent.getIntExtra("level", 0);
             boolean creative = intent.getBooleanExtra("creative", false);
             boolean acq = intent.getBooleanExtra("acq", false);
+            boolean labdelay = intent.getBooleanExtra("labdelay", false);
             StringBuilder url = new StringBuilder("file:///android_asset/index.html?level=").append(level);
             if (creative) url.append("&creative=1");
             if (acq) url.append("&acq=1");
+            if (labdelay) url.append("&labdelay=1");
             return url.toString();
         }
         String url = intent.getStringExtra("url");
