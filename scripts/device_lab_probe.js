@@ -7,6 +7,7 @@
   const feedback = document.getElementById('feedback');
   const prompt = document.getElementById('prompt');
   const streak = document.getElementById('streak');
+  const timer = document.getElementById('timer');
   const params = new URLSearchParams(location.search);
   let reportTimer = 0;
 
@@ -31,7 +32,8 @@
   function reportState(label) {
     const [x, y] = centerPx(hotspot);
     log(label, mechanic(), x, y, 'DPR', window.devicePixelRatio || 1,
-        'SCENE_CHILDREN', scene.childElementCount, 'PROMPT', prompt.textContent.trim(), 'STREAK', streak.textContent.trim());
+        'SCENE_CHILDREN', scene.childElementCount, 'PROMPT', prompt.textContent.trim(),
+        'STREAK', streak.textContent.trim(), 'TIMER_DISPLAY', getComputedStyle(timer).display);
   }
 
   function scheduleState(label) {
