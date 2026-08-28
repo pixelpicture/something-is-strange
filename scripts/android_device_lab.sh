@@ -17,7 +17,6 @@ trap 'rc=$?; echo "[SIS_LAB_HOST] FAIL rc=$rc stage=${STAGE:-unknown}" >> "$PROO
 wait_log(){ local p="$1" n="${2:-50}"; for _ in $(seq 1 "$n"); do lab_log|grep -Eq "$p"&&return 0; sleep .1; done; echo "Timed out: $p" >&2; append_log; return 1; }
 launch(){ local level="$1" creative="${2:-false}" acq="${3:-false}"; adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -n "$ACTIVITY" --ei level "$level" --ez creative "$creative" --ez acq "$acq" >/dev/null; }
 start_level(){ launch "$@"; wait_log '\[SIS_LAB\] READY' 50; }
-start_acq_fast(){ launch 0 true true; wait_log '\[SIS_LAB\] ACQ_BASE' 50; }
 latest_state_line(){ lab_log|grep -E '\[SIS_LAB\] (READY|HOTSPOT|SCENE) '|tail -1||true; }
 latest_hotspot_xy(){ latest_state_line|sed -E 's/.*(READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'; }
 latest_wrong_xy(){ latest_state_line|sed -E 's/.* WRONG ([0-9]+) ([0-9]+).* DPR.*/\1 \2/'; }
@@ -94,18 +93,24 @@ echo '[SIS_LAB_HOST] BACKGROUND_RESUME_PASS' >> "$PROOF/device-log.txt"
 append_log
 
 STAGE=acquisition_motion
-# Full-resolution screencap is slower than the 1.35 s anomaly timing on hosted API35.
-# Record the actual compositor stream instead, then derive the before/after evidence from
-# timestamps in that one physical Android recording. This preserves real product timing.
-start_acq_fast
-adb shell rm -f /sdcard/shadow-device.mp4 >/dev/null 2>&1 || true
-adb shell screenrecord --bit-rate 4000000 --time-limit 4 /sdcard/shadow-device.mp4 >/dev/null 2>&1 &
+# Pre-roll Android's real compositor recorder so encoder startup cannot miss the 1.35 s anomaly.
+# Then launch the unmodified acquisition scene, trim only the recorder startup tail on the host,
+# and derive before/after evidence from that one physical recording.
+adb logcat -c
+adb shell am force-stop "$PKG"
+adb shell rm -f /sdcard/acq-raw.mp4 >/dev/null 2>&1 || true
+adb shell screenrecord --bit-rate 4000000 --time-limit 5 /sdcard/acq-raw.mp4 >/dev/null 2>&1 &
 REC_PID=$!
+sleep 1.0
+adb shell am start -n "$ACTIVITY" --ei level 0 --ez creative true --ez acq true >/dev/null
+wait_log '\[SIS_LAB\] ACQ_BASE' 50
 wait_log '\[SIS_LAB\] ACQ_TURN' 50
 wait "$REC_PID"
-adb pull /sdcard/shadow-device.mp4 "$PROOF/shadow-device.mp4" >/dev/null
-ffmpeg -v error -y -ss 0.25 -i "$PROOF/shadow-device.mp4" -frames:v 1 "$PROOF/acq-before-turn.png"
-ffmpeg -v error -y -ss 1.75 -i "$PROOF/shadow-device.mp4" -frames:v 1 "$PROOF/acq-after-turn.png"
+adb pull /sdcard/acq-raw.mp4 "$PROOF/acq-raw.mp4" >/dev/null
+ffmpeg -v error -y -ss 1.15 -i "$PROOF/acq-raw.mp4" -t 3.2 -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$PROOF/shadow-device.mp4"
+rm -f "$PROOF/acq-raw.mp4"
+ffmpeg -v error -y -ss 0.55 -i "$PROOF/shadow-device.mp4" -frames:v 1 "$PROOF/acq-before-turn.png"
+ffmpeg -v error -y -ss 2.00 -i "$PROOF/shadow-device.mp4" -frames:v 1 "$PROOF/acq-after-turn.png"
 append_log
 
 STAGE=final_assertions
