@@ -13,12 +13,18 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Resolve Chrome
+      - name: Resolve Chrome and ffmpeg
         run: |
           set -euo pipefail
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || true)"
+          FFMPEG="$(command -v ffmpeg || true)"
+          FFPROBE="$(command -v ffprobe || true)"
           test -n "$CHROME"
+          test -n "$FFMPEG"
+          test -n "$FFPROBE"
           echo "CHROME=$CHROME" >> "$GITHUB_ENV"
+          echo "FFMPEG=$FFMPEG" >> "$GITHUB_ENV"
+          echo "FFPROBE=$FFPROBE" >> "$GITHUB_ENV"
       - name: Serve prototype
         run: |
           python3 -m http.server 8000 >/tmp/sis-http.log 2>&1 &
@@ -51,10 +57,29 @@ jobs:
           for variant in baseline acquisition; do
             cmp -s "shadow-proof/${variant}-t200.png" "shadow-proof/${variant}-t3500.png" && exit 1 || true
           done
+      - name: Capture one acquisition video in same Chrome
+        run: |
+          set -euo pipefail
+          node scripts/capture_shadow_acq_video.mjs
+          test "$(find shadow-video -name 'frame*.png' | wc -l)" -eq 43
+          "$FFMPEG" -y -loglevel error -framerate 10 -i shadow-video/frame%03d.png \
+            -c:v libx264 -pix_fmt yuv420p -movflags +faststart shadow-acquisition.mp4
+          test -s shadow-acquisition.mp4
+          test "$($FFPROBE -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 shadow-acquisition.mp4)" = "540"
+          test "$($FFPROBE -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 shadow-acquisition.mp4)" = "960"
+          DURATION="$($FFPROBE -v error -show_entries format=duration -of csv=p=0 shadow-acquisition.mp4)"
+          python3 - "$DURATION" <<'PY'
+          import sys
+          d=float(sys.argv[1])
+          assert 4.2 <= d <= 4.4, d
+          PY
+          rm -rf shadow-video
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: shadow-acquisition-frame-proof-${{ github.sha }}
-          path: shadow-proof/*.png
+          name: shadow-acquisition-proof-${{ github.sha }}
+          path: |
+            shadow-proof/*.png
+            shadow-acquisition.mp4
           retention-days: 7
           if-no-files-found: error
