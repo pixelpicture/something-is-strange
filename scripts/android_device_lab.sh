@@ -16,14 +16,9 @@ append_log(){ lab_log >> "$PROOF/device-log.txt"; }
 trap 'rc=$?; echo "[SIS_LAB_HOST] FAIL rc=$rc stage=${STAGE:-unknown}" >> "$PROOF/device-log.txt"; append_log; exit "$rc"' ERR
 wait_log(){ local p="$1" n="${2:-50}"; for _ in $(seq 1 "$n"); do lab_log|grep -Eq "$p"&&return 0; sleep .1; done; echo "Timed out: $p" >&2; append_log; return 1; }
 launch(){ local level="$1" creative="${2:-false}" acq="${3:-false}"; adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -n "$ACTIVITY" --ei level "$level" --ez creative "$creative" --ez acq "$acq" >/dev/null; }
-# Require both layers of readiness before physical input. JS handlers can become ready a
-# fraction of a second before Android reports WebView page completion; taps in that gap are
-# occasionally swallowed by the window transition even though elementFromPoint is correct.
-# Both markers arrive well inside the real five-second challenge budget.
 start_level(){ local level="$1"; launch "$@"; wait_log '\[SIS_LAB\] INTERACTION_READY' 120; wait_log "READY file:///android_asset/index.html\\?level=${level}([& ]|$)" 120; }
 latest_state_line(){ lab_log|grep -E '\[SIS_LAB\] (INTERACTION_READY|READY|HOTSPOT|SCENE) '|tail -1||true; }
 latest_hotspot_xy(){ latest_state_line|sed -E 's/.*(INTERACTION_READY|READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'; }
-latest_wrong_xy(){ latest_state_line|sed -E 's/.* WRONG ([0-9]+) ([0-9]+).* DPR.*/\1 \2/'; }
 wait_mechanic_xy(){ local m="$1"; for _ in $(seq 1 40); do local l x; l=$(lab_log|grep -E "\[SIS_LAB\] (INTERACTION_READY|READY|HOTSPOT|SCENE) $m "|tail -1||true); x=$(echo "$l"|sed -E 's/.*(INTERACTION_READY|READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'); [[ "$x" =~ ^[0-9]+\ [0-9]+$ ]]&&{ echo "$x";return 0;}; sleep .1; done; return 1; }
 wait_next_xy(){ for _ in $(seq 1 30); do local x; x=$(lab_log|grep '\[SIS_LAB\] NEXT '|tail -1|sed -E 's/.*NEXT ([0-9]+) ([0-9]+).*/\1 \2/'||true); [[ "$x" =~ ^[0-9]+\ [0-9]+$ ]]&&{ echo "$x";return 0;}; sleep .1; done; return 1; }
 real_hotspot_tap(){ local x a b; x=$(latest_hotspot_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
@@ -38,7 +33,8 @@ real_wrong_tap
 wait_log '\[SIS_LAB\] EVENT WRONG_TAP' 40
 wait_log '\[SIS_LAB\] FEEDBACK NO — LOOK AGAIN\.' 40
 wait_log '\[SIS_LAB\] STATE STREAK 0 NO — LOOK AGAIN\.' 40
-sleep .10
+wait_log '\[SIS_LAB\] VISUAL_READY WRONG FEEDBACK NO — LOOK AGAIN\.' 50
+sleep .55
 shot shadow-wrongtap
 adb shell uiautomator dump /sdcard/device-window.xml >/dev/null 2>&1||true
 adb pull /sdcard/device-window.xml "$PROOF/device-window.xml" >/dev/null 2>&1||true
@@ -102,11 +98,16 @@ adb shell rm -f /sdcard/acq-raw.mp4 >/dev/null 2>&1 || true
 adb shell am start -S -n "$ACTIVITY" --es url 'file:///android_asset/index.html?level=0&creative=1&acq=1&labdelay=1' >/dev/null
 wait_log '\[SIS_LAB\] ACQ_DELAY_ARMED 1500' 120
 wait_log '\[SIS_LAB\] ACQ_BASE' 120
-adb shell screenrecord --bit-rate 4000000 --time-limit 5 /sdcard/acq-raw.mp4 >/dev/null 2>&1 &
+adb shell screenrecord --bit-rate 4000000 --time-limit 7 /sdcard/acq-raw.mp4 >/dev/null 2>&1 &
 REC_PID=$!
 wait_log '\[SIS_LAB\] ACQ_TURN' 100
 wait "$REC_PID"
 adb pull /sdcard/acq-raw.mp4 "$PROOF/acq-raw.mp4" >/dev/null
+raw_duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$PROOF/acq-raw.mp4")
+python3 - "$raw_duration" <<'PY'
+import sys
+assert float(sys.argv[1]) >= 4.55, sys.argv[1]
+PY
 ffmpeg -v error -y -ss 1.35 -i "$PROOF/acq-raw.mp4" -t 3.2 -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$PROOF/shadow-device.mp4"
 rm -f "$PROOF/acq-raw.mp4"
 ffmpeg -v error -y -ss 0.35 -i "$PROOF/shadow-device.mp4" -frames:v 1 "$PROOF/acq-before-turn.png"
