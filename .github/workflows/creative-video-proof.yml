@@ -45,7 +45,7 @@ jobs:
             ffmpeg -y -loglevel error -f x11grab -draw_mouse 0 -framerate 30 -video_size 540x960 -i :99.0 -t 5.1 -c:v libx264 -preset veryfast -crf 21 -pix_fmt yuv420p "/tmp/${name}-raw.mp4" &
             FPID=$!
             sleep 0.20
-            "$CHROME" --no-sandbox --user-data-dir="$profile" "$url" >/tmp/${name}-navigate.log 2>&1 || true
+            timeout 2s "$CHROME" --no-sandbox --user-data-dir="$profile" "$url" >/tmp/${name}-navigate.log 2>&1 || true
             wait "$FPID"
             ffmpeg -y -loglevel error -ss 0.55 -i "/tmp/${name}-raw.mp4" -t 4.3 -c:v libx264 -preset veryfast -crf 21 -pix_fmt yuv420p -movflags +faststart "creative-video/${name}.mp4"
             kill "$CPID" || true
