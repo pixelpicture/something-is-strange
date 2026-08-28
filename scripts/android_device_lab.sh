@@ -32,9 +32,6 @@ shot(){ shot_to "$PROOF/$1.png"; }
 STAGE=cold_wrong_touch
 start_level 0 false false
 real_wrong_tap
-# Wrong feedback is intentionally transient (650 ms). Prove the physical ADB tap reached
-# tapLayer from the synchronous event/feedback/state logs instead of waiting on the delayed
-# visual-ready sampler, which can legitimately observe the already-cleared text.
 wait_log '\[SIS_LAB\] EVENT WRONG_TAP' 40
 wait_log '\[SIS_LAB\] FEEDBACK NO — LOOK AGAIN\.' 40
 wait_log '\[SIS_LAB\] STATE STREAK 0 NO — LOOK AGAIN\.' 40
@@ -96,19 +93,20 @@ wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED FIRST\.' 5
 echo '[SIS_LAB_HOST] BACKGROUND_RESUME_PASS' >> "$PROOF/device-log.txt"
 append_log
 
-STAGE=acquisition_keyframes
-start_acq_fast
-shot acq-before-turn
-wait_log '\[SIS_LAB\] ACQ_TURN' 50
-sleep .2; shot acq-after-turn
-append_log
-
 STAGE=acquisition_motion
+# Full-resolution screencap is slower than the 1.35 s anomaly timing on hosted API35.
+# Record the actual compositor stream instead, then derive the before/after evidence from
+# timestamps in that one physical Android recording. This preserves real product timing.
 start_acq_fast
-TMP_FRAMES=$(mktemp -d)
-for i in $(seq -w 0 15); do shot_to "$TMP_FRAMES/frame-$i.png"; sleep .12; done
-ffmpeg -v error -y -framerate 4 -i "$TMP_FRAMES/frame-%02d.png" -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$PROOF/shadow-device.mp4"
-rm -rf "$TMP_FRAMES"; append_log
+adb shell rm -f /sdcard/shadow-device.mp4 >/dev/null 2>&1 || true
+adb shell screenrecord --bit-rate 4000000 --time-limit 4 /sdcard/shadow-device.mp4 >/dev/null 2>&1 &
+REC_PID=$!
+wait_log '\[SIS_LAB\] ACQ_TURN' 50
+wait "$REC_PID"
+adb pull /sdcard/shadow-device.mp4 "$PROOF/shadow-device.mp4" >/dev/null
+ffmpeg -v error -y -ss 0.25 -i "$PROOF/shadow-device.mp4" -frames:v 1 "$PROOF/acq-before-turn.png"
+ffmpeg -v error -y -ss 1.75 -i "$PROOF/shadow-device.mp4" -frames:v 1 "$PROOF/acq-after-turn.png"
+append_log
 
 STAGE=final_assertions
 grep -q 'LOAD file:///android_asset/index.html' "$PROOF/device-log.txt"
