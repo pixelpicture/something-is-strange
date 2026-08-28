@@ -148,75 +148,57 @@
     },
 
     haircut_mirror() {
-      svg(`<rect width="360" height="520" fill="#c5b8a9"/><rect x="205" y="70" width="125" height="270" rx="10" fill="#3e4148"/><rect x="213" y="78" width="109" height="254" rx="6" fill="#aeb8bd"/>
-        <g class="entity"><rect x="62" y="302" width="82" height="120" rx="28" fill="#43536d"/><circle cx="103" cy="270" r="36" fill="#d4ab8d"/><path id="realHair" d="M72 262 Q102 210 136 259 Q118 246 72 262" fill="#3c2b24"/></g>
-        <g id="mirrorHair" class="entity"><rect x="232" y="245" width="68" height="82" rx="22" fill="#56647d"/><circle cx="266" cy="217" r="31" fill="#d0a789"/><path id="mirrorHairShape" d="M238 210 Q264 166 295 207 Q278 196 238 210" fill="#3c2b24"/></g>
-        <g transform="translate(145 235)" stroke="#d9dde3" stroke-width="5" stroke-linecap="round"><line x1="0" y1="0" x2="34" y2="25"/><line x1="34" y1="0" x2="0" y2="25"/><circle cx="2" cy="1" r="6" fill="none"/><circle cx="32" cy="1" r="6" fill="none"/></g>
-        <text x="22" y="46" fill="#332c28" opacity=".65" font-size="13">WATCH THE HAIRCUT</text>`);
-      later(() => attr('mirrorHairShape','d','M243 201 Q265 185 291 201 Q276 195 243 201'), 1750);
+      svg(`<rect width="360" height="520" fill="#c6b6a7"/><rect y="390" width="360" height="130" fill="#6e5a4d"/>
+        <rect x="210" y="55" width="120" height="260" rx="8" fill="#504942"/><rect x="218" y="63" width="104" height="244" fill="#cbd1d4"/>
+        <g class="entity"><circle cx="112" cy="252" r="36" fill="#d6b293"/><path id="realHair" d="M78 244 Q112 197 147 243 L140 226 Q110 189 83 222 Z" fill="#3e3029"/><rect x="80" y="286" width="64" height="112" rx="22" fill="#4f657c"/></g>
+        <g class="entity"><circle cx="270" cy="200" r="31" fill="#cda98d"/><path id="mirrorHair" d="M241 194 Q270 154 300 193 L294 177 Q268 145 245 173 Z" fill="#3e3029"/><rect x="244" y="231" width="52" height="76" rx="18" fill="#596c81"/></g>
+        <text x="22" y="46" fill="#3e332d" opacity=".68" font-size="13">WATCH THE HAIRCUT</text>`);
+      later(() => attr('mirrorHair','d','M242 190 Q270 176 298 190 L294 178 Q270 169 246 180 Z'), 1650);
     },
 
     extra_shadow() {
-      svg(`<rect width="360" height="520" fill="#293144"/><rect y="365" width="360" height="155" fill="#171a22"/><circle cx="55" cy="240" r="10" fill="#f4dda0" opacity=".9"/>
-        <g class="entity"><circle cx="120" cy="278" r="18" fill="#d5d7dd"/><rect x="105" y="296" width="30" height="70" rx="13" fill="#9ba4b5"/></g>
-        <g class="entity"><circle cx="190" cy="286" r="17" fill="#c7cbd3"/><rect x="176" y="303" width="28" height="63" rx="12" fill="#8794a8"/></g>
-        <path class="entity" d="M112 365 L185 330 L200 344 L130 382 Z" fill="#06070a" opacity=".82"/><path class="entity" d="M182 365 L252 336 L266 350 L200 383 Z" fill="#06070a" opacity=".82"/>
-        <path id="thirdShadow" class="entity" d="M155 365 L286 308 L302 329 L178 390 Z" fill="#040507" opacity="0"/>
-        <text x="22" y="46" fill="#fff" opacity=".62" font-size="13">COUNT THE SHADOWS</text>`);
-      later(() => attr('thirdShadow','opacity','.86'), 1750);
-    }
+      svg(`<rect width="360" height="520" fill="#d1c6aa"/><rect y="365" width="360" height="155" fill="#9a8064"/>
+        <circle cx="180" cy="128" r="38" fill="#f0c96a" opacity=".75"/>
+        <g class="entity"><circle cx="112" cy="275" r="20" fill="#454b56"/><rect x="94" y="296" width="36" height="78" rx="14" fill="#586171"/><circle cx="235" cy="278" r="20" fill="#554a45"/><rect x="217" y="299" width="36" height="76" rx="14" fill="#6e5e55"/></g>
+        <path d="M113 371 L66 455 L145 455 Z" fill="#413b35" opacity=".55"/><path d="M235 374 L190 455 L270 455 Z" fill="#413b35" opacity=".55"/>
+        <path id="thirdShadow" class="entity" d="M174 360 L143 455 L215 455 Z" fill="#171615" opacity="0"/>
+        <text x="22" y="46" fill="#3b3328" opacity=".68" font-size="13">COUNT THE SHADOWS</text>`);
+      later(() => attr('thirdShadow','opacity','.72'), 1550);
+    },
+
+    wrong_occlusion: undefined
+  };
+
+  // Restore renderer overwritten by the duplicate guard above if needed.
+  renderers.wrong_occlusion = function() {
+    svg(`<rect width="360" height="520" fill="#c9d0c3"/><rect y="385" width="360" height="135" fill="#887961"/>
+      <g id="catBody" class="entity"><ellipse cx="82" cy="330" rx="38" ry="28" fill="#515660"/><circle cx="106" cy="298" r="21" fill="#515660"/><path d="M92 281 L98 258 L110 282 M110 282 L125 261 L124 289" fill="#515660"/></g>
+      <g id="chair" class="entity"><rect x="158" y="245" width="92" height="115" rx="12" fill="#6f5144"/><rect x="170" y="360" width="14" height="82" fill="#5b4037"/><rect x="225" y="360" width="14" height="82" fill="#5b4037"/></g>
+      <path id="tail" class="entity" d="M50 331 Q20 315 28 286" fill="none" stroke="#515660" stroke-width="15" stroke-linecap="round"/>
+      <text x="22" y="46" fill="#30362f" opacity=".65" font-size="13">WATCH THE CAT</text>`);
+    later(() => { attr('catBody','transform','translate(45 0)'); attr('tail','transform','translate(45 0)'); }, 700);
+    later(() => { attr('catBody','transform','translate(90 0)'); attr('tail','transform','translate(90 0)'); }, 1300);
+    later(() => { attr('catBody','transform','translate(125 0)'); attr('tail','transform','translate(125 0)'); }, 1900);
   };
 
   const replays = {
-    shadow_desync() {
-      attr('shadow','d','M126 347 C168 340 219 330 276 316 L286 342 C218 356 166 364 126 367 Z');
-      later(() => attr('shadow','d','M126 347 C168 340 220 330 276 316 L296 255 L315 262 L286 342 C218 356 166 364 126 367 Z'), 220);
-    },
-    mirror_desync() {
-      attr('realNose','cx',115); attr('realEye1','cx',94); attr('realEye2','cx',106); attr('mirrorNose','cx',267); attr('mirrorEye1','cx',248); attr('mirrorEye2','cx',260);
-      later(() => { attr('realNose','cx',88); attr('realEye1','cx',83); attr('realEye2','cx',92); }, 220);
-      later(() => { attr('mirrorNose','cx',278); attr('mirrorEye1','cx',270); attr('mirrorEye2','cx',281); }, 820);
-    },
-    domino_prediction() {
-      for(let i=0;i<5;i++) setDominoStanding(i);
-      for(let i=0;i<5;i++) later(() => setDominoFlat(i), 180+i*105);
-    },
-    wrong_light_switch() {
-      attr('rightBulb','fill','#30343e'); attr('rightGlow','opacity',0); attr('toggle','y',305);
-      later(() => { attr('toggle','y',320); attr('rightBulb','fill','#ffe89a'); attr('rightGlow','opacity','.28'); }, 300);
-    },
-    color_theft() {
-      attrs('ballLeft',{cx:72,opacity:1,fill:'#d84b45'}); attrs('ballRight',{opacity:0,fill:'#f2eee5'}); attr('vase','fill','#f2eee5');
-      later(() => { attr('ballLeft','opacity',0); attr('vase','fill','#d84b45'); attr('ballRight','opacity',1); }, 340);
-    },
-    wrong_occlusion() {
-      attr('catBody','transform','translate(0 0)'); attr('tail','transform','translate(0 0)');
-      later(() => { attr('catBody','transform','translate(125 0)'); attr('tail','transform','translate(125 0)'); }, 320);
-    },
-    reverse_splash() {
-      attrs('ball',{cy:270}); attr('splash','opacity',0); attr('drops','opacity',0);
-      later(() => { attr('splash','opacity',1); attr('drops','opacity',1); }, 300);
-      later(() => attr('ball','cy',342), 900);
-    },
-    door_two_rooms() {
-      attr('warmRoom','opacity',1); attr('coldRoom','opacity',0); attr('doorPanel','opacity',0);
-      later(() => { attr('warmRoom','opacity',0); attr('coldRoom','opacity',1); }, 650);
-    },
-    haircut_mirror() {
-      attr('mirrorHairShape','d','M238 210 Q264 166 295 207 Q278 196 238 210');
-      later(() => attr('mirrorHairShape','d','M243 201 Q265 185 291 201 Q276 195 243 201'), 380);
-    },
-    extra_shadow() {
-      attr('thirdShadow','opacity',0);
-      later(() => attr('thirdShadow','opacity','.86'), 340);
-    }
+    shadow_desync(){ attr('shadow','d','M126 347 C168 340 220 330 276 316 L296 255 L315 262 L286 342 C218 356 166 364 126 367 Z'); },
+    mirror_desync(){ attr('realNose','cx',88); attr('realEye1','cx',83); attr('realEye2','cx',92); attr('mirrorNose','cx',278); attr('mirrorEye1','cx',270); attr('mirrorEye2','cx',281); },
+    domino_prediction(){ for(let i=0;i<5;i++) setDominoFlat(i); for(let i=5;i<10;i++) setDominoStanding(i); },
+    wrong_light_switch(){ attr('toggle','y',320); attr('rightBulb','fill','#ffe89a'); attr('rightGlow','opacity','.28'); },
+    color_theft(){ attr('ballLeft','opacity',0); attr('vase','fill','#d84b45'); attr('ballRight','opacity',1); },
+    wrong_occlusion(){ attr('catBody','transform','translate(125 0)'); attr('tail','transform','translate(125 0)'); },
+    reverse_splash(){ attr('splash','opacity',1); attr('drops','opacity',1); attr('ball','cy',342); },
+    door_two_rooms(){ attr('doorPanel','opacity',0); attr('warmRoom','opacity',0); attr('coldRoom','opacity',1); },
+    haircut_mirror(){ attr('mirrorHair','d','M242 190 Q270 176 298 190 L294 178 Q270 169 246 180 Z'); },
+    extra_shadow(){ attr('thirdShadow','opacity','.72'); }
   };
 
   function reveal(level) {
     clearScheduled();
     hotspot.classList.add('reveal');
+    const focus = scene.querySelector(level.focusSelector);
     scene.querySelectorAll('.entity').forEach(el => el.classList.add('dim'));
-    const focus = q(level.focusId);
     focus?.classList.remove('dim');
     focus?.classList.add('glow');
     feedback.textContent = level.revealText;
@@ -234,7 +216,13 @@
       timer.textContent = String(remaining);
       if (remaining <= 0) {
         clearInterval(countdownId); countdownId = null;
-        if (!solved) { emit('timeout'); reveal(level); }
+        if (!solved) {
+          solved = true;
+          streak = 0;
+          streakEl.textContent = 'STREAK 0';
+          emit('timeout');
+          reveal(level);
+        }
       }
     }, 100);
   }
