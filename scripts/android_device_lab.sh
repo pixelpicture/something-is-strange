@@ -33,8 +33,10 @@ shot_to(){ local o="$1"; for _ in $(seq 1 6); do adb exec-out screencap -p>"$o";
 shot(){ shot_to "$PROOF/$1.png"; }
 
 STAGE=cold_wrong_touch
+# Tap before any expensive screencap: the production challenge has a real 5 s deadline,
+# and a 1080x2400 hosted-emulator screencap can consume most of that budget. The previous
+# ordering accidentally let timeout reveal the correct answer before the intended wrong tap.
 start_level 0 false false
-shot shadow-start
 real_wrong_tap
 wait_log '\[SIS_LAB\] VISUAL_READY WRONG FEEDBACK NO' 40
 sleep .25
@@ -42,6 +44,11 @@ shot shadow-wrongtap
 adb shell uiautomator dump /sdcard/device-window.xml >/dev/null 2>&1||true
 adb pull /sdcard/device-window.xml "$PROOF/device-window.xml" >/dev/null 2>&1||true
 ! grep -qiE 'Viewing full screen|Got it|isn.t responding|Close app|App info' "$PROOF/device-window.xml" 2>/dev/null
+append_log
+# Preserve a clean initial-state frame independently; no interaction follows this capture,
+# so screencap latency cannot invalidate the touch semantics being tested above.
+start_level 0 false false
+shot shadow-start
 append_log
 
 STAGE=three_level_cycle
