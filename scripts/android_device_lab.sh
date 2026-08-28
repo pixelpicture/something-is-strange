@@ -37,8 +37,26 @@ start_level() {
   return 1
 }
 
-hotspot_xy() {
-  lab_log | grep '\[SIS_LAB\] READY' | tail -1 | sed -E 's/.*READY [0-9]+ ([0-9]+) ([0-9]+).*/\1 \2/'
+latest_hotspot_xy() {
+  local line
+  line=$(lab_log | grep -E '\[SIS_LAB\] (READY|HOTSPOT|SCENE) ' | tail -1 || true)
+  echo "$line" | sed -E 's/.*(READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+).*/\2 \3/'
+}
+
+wait_mechanic_xy() {
+  local mechanic="$1"
+  for _ in $(seq 1 40); do
+    local line xy
+    line=$(lab_log | grep -E "\[SIS_LAB\] (READY|HOTSPOT|SCENE) $mechanic " | tail -1 || true)
+    xy=$(echo "$line" | sed -E 's/.*(READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+).*/\2 \3/')
+    if [[ "$xy" =~ ^[0-9]+\ [0-9]+$ ]]; then
+      echo "$xy"
+      return 0
+    fi
+    sleep 0.1
+  done
+  echo "Timed out waiting for mechanic geometry: $mechanic" >&2
+  return 1
 }
 
 wait_next_xy() {
@@ -57,9 +75,16 @@ wait_next_xy() {
 
 real_hotspot_tap() {
   local xy x y
-  xy=$(hotspot_xy)
+  xy=$(latest_hotspot_xy)
   read -r x y <<< "$xy"
   test -n "$x" && test -n "$y"
+  adb shell input tap "$x" "$y"
+}
+
+real_next_tap() {
+  local xy x y
+  xy=$(wait_next_xy)
+  read -r x y <<< "$xy"
   adb shell input tap "$x" "$y"
 }
 
@@ -79,33 +104,43 @@ shot() {
   return 1
 }
 
-# Shadow: cold launch, anomaly, wrong tap.
+# Shadow cold launch + early wrong tap before anomaly/timeout.
 start_level 0 false false
 adb shell uiautomator dump /sdcard/device-window.xml >/dev/null 2>&1 || true
 adb pull /sdcard/device-window.xml "$PROOF/device-window.xml" >/dev/null 2>&1 || true
 ! grep -qiE 'Viewing full screen|Got it' "$PROOF/device-window.xml" 2>/dev/null
 shot shadow-start
-sleep 1.9
-shot shadow-anomaly
 adb shell input tap 120 1450
-sleep 0.6
+sleep 0.45
 shot shadow-wrongtap
 append_log
 
-# Shadow: real correct touch at live DOM hotspot, then real NEXT touch at live DOM geometry.
+# Shadow anomaly, correct touch, NEXT, then consecutive Mirror and Domino cycles in one live session.
 start_level 0 false false
 sleep 1.9
+shot shadow-anomaly
 real_hotspot_tap
 sleep 1.1
 shot shadow-correct
-next_xy=$(wait_next_xy)
-read -r next_x next_y <<< "$next_xy"
-adb shell input tap "$next_x" "$next_y"
-sleep 1.0
+real_next_tap
+sleep 0.8
 shot shadow-next
+
+mirror_xy=$(wait_mechanic_xy mirror_desync)
+read -r mirror_x mirror_y <<< "$mirror_xy"
+adb shell input tap "$mirror_x" "$mirror_y"
+sleep 0.35
+real_next_tap
+
+domino_xy=$(wait_mechanic_xy domino_prediction)
+read -r domino_x domino_y <<< "$domino_xy"
+adb shell input tap "$domino_x" "$domino_y"
+sleep 0.35
+real_next_tap
+wait_mechanic_xy wrong_light_switch >/dev/null
 append_log
 
-# Mirror: capture lag window then hit live DOM hotspot.
+# Independent Mirror visual proof + correct touch.
 start_level 1 false false
 sleep 1.7
 shot mirror-anomaly
@@ -114,7 +149,7 @@ sleep 1.1
 shot mirror-correct
 append_log
 
-# Domino: capture broken chain then hit live DOM hotspot.
+# Independent Domino visual proof + correct touch.
 start_level 2 false false
 sleep 2.1
 shot domino-anomaly
