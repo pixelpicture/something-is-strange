@@ -3,12 +3,13 @@ import fs from 'node:fs';
 const base = 'http://127.0.0.1:8000/';
 const debug = 'http://127.0.0.1:9222';
 const outDir = 'shadow-proof';
+const marks = [200, 1200, 1700, 2500, 3500];
 fs.mkdirSync(outDir, { recursive: true });
 
-async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function waitForPageTarget() {
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 100; i++) {
     try {
       const list = await fetch(`${debug}/json/list`).then(r => r.json());
       const page = list.find(x => x.type === 'page' && x.webSocketDebuggerUrl);
@@ -29,6 +30,7 @@ function on(method, fn) {
   if (!listeners.has(method)) listeners.set(method, []);
   listeners.get(method).push(fn);
 }
+
 function once(method) {
   return new Promise(resolve => {
     const fn = params => {
@@ -40,6 +42,7 @@ function once(method) {
     on(method, fn);
   });
 }
+
 function send(method, params = {}) {
   const id = nextId++;
   ws.send(JSON.stringify({ id, method, params }));
@@ -50,6 +53,7 @@ await new Promise((resolve, reject) => {
   ws.onopen = resolve;
   ws.onerror = reject;
 });
+
 ws.onmessage = evt => {
   const msg = JSON.parse(evt.data);
   if (msg.id) {
@@ -64,9 +68,23 @@ ws.onmessage = evt => {
 };
 
 await send('Page.enable');
-await send('Emulation.setDeviceMetricsOverride', { width: 540, height: 960, deviceScaleFactor: 1, mobile: false });
+await send('Emulation.setDeviceMetricsOverride', {
+  width: 540,
+  height: 960,
+  deviceScaleFactor: 1,
+  mobile: false
+});
 
-async function capture(variant, ms) {
+async function screenshot(variant, ms) {
+  const shot = await send('Page.captureScreenshot', { format: 'png', fromSurface: true });
+  const file = `${outDir}/${variant}-t${ms}.png`;
+  fs.writeFileSync(file, Buffer.from(shot.data, 'base64'));
+  const size = fs.statSync(file).size;
+  if (size <= 5000) throw new Error(`${file} too small`);
+  console.log(file, size);
+}
+
+async function captureVariant(variant) {
   const reveal = variant === 'baseline' ? 3000 : 2550;
   const extra = variant === 'acquisition' ? '&acq=1' : '';
   const url = `${base}?creative=1&level=0&revealAt=${reveal}${extra}`;
@@ -75,24 +93,20 @@ async function capture(variant, ms) {
   await send('Page.navigate', { url });
   await loaded;
 
-  const expired = once('Emulation.virtualTimeBudgetExpired');
-  await send('Emulation.setVirtualTimePolicy', {
-    policy: 'pauseIfNetworkFetchesPending',
-    budget: ms,
-    maxVirtualTimeTaskStarvationCount: 10000
-  });
-  await expired;
-  await send('Emulation.setVirtualTimePolicy', { policy: 'pause' });
+  const start = Date.now();
+  let elapsedTarget = 0;
+  for (const mark of marks) {
+    const wait = Math.max(0, mark - elapsedTarget);
+    if (wait) await sleep(wait);
+    await screenshot(variant, mark);
+    elapsedTarget = mark;
+  }
 
-  const shot = await send('Page.captureScreenshot', { format: 'png', fromSurface: true });
-  const file = `${outDir}/${variant}-t${ms}.png`;
-  fs.writeFileSync(file, Buffer.from(shot.data, 'base64'));
-  if (fs.statSync(file).size <= 5000) throw new Error(`${file} too small`);
-  console.log(file, fs.statSync(file).size);
+  console.log(`${variant} capture elapsed=${Date.now() - start}ms`);
 }
 
 for (const variant of ['baseline', 'acquisition']) {
-  for (const ms of [200, 1200, 1700, 2500, 3500]) await capture(variant, ms);
+  await captureVariant(variant);
 }
 
 ws.close();
