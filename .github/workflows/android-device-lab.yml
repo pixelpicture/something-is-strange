@@ -13,39 +13,27 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
-
       - name: Enable KVM acceleration
         run: |
           set -euo pipefail
-          if [ -e /dev/kvm ]; then
-            sudo chmod 666 /dev/kvm
-            ls -l /dev/kvm
-            test -r /dev/kvm
-            test -w /dev/kvm
-          else
-            echo '/dev/kvm is unavailable on this runner'
-            exit 1
-          fi
-
+          sudo chmod 666 /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
       - name: Stage exact prototype into lab shell
         run: |
           set -euo pipefail
           mkdir -p android-device-lab/app/src/main/assets
           cp index.html styles.css levels.js engine-v2.js content-repairs.js creative-mode.js shadow-acquisition.js android-device-lab/app/src/main/assets/
-
       - name: Build lab APK
         working-directory: android-device-lab
         run: gradle --no-daemon assembleDebug
-
       - name: Run real Android emulator interactions
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -54,95 +42,29 @@ jobs:
           profile: pixel_6
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
-          script: |
-            set -e
-            mkdir -p device-proof
-            adb install -r android-device-lab/app/build/outputs/apk/debug/app-debug.apk
-            adb logcat -c
-            adb shell settings put secure immersive_mode_confirmations confirmed || true
-            adb shell am force-stop com.pixelpicture.sisdevicelab
-            adb shell am start -n com.pixelpicture.sisdevicelab/.MainActivity --es url 'file:///android_asset/index.html?level=0'
-            sleep 1
-            adb shell uiautomator dump /sdcard/device-window.xml >/dev/null 2>&1 || true
-            adb pull /sdcard/device-window.xml device-proof/device-window.xml >/dev/null 2>&1 || true
-            grep -qiE 'Viewing full screen|Got it' device-proof/device-window.xml 2>/dev/null && exit 91 || true
-            adb exec-out screencap -p > device-proof/shadow-start.png
-            sleep 1.2
-            adb exec-out screencap -p > device-proof/shadow-anomaly.png
-            adb shell input tap 120 1450
-            sleep 0.4
-            adb exec-out screencap -p > device-proof/shadow-wrongtap.png
-
-            adb shell am force-stop com.pixelpicture.sisdevicelab
-            adb shell am start -n com.pixelpicture.sisdevicelab/.MainActivity --es url 'file:///android_asset/index.html?level=0'
-            sleep 2.2
-            adb shell input tap 785 1290
-            sleep 0.5
-            adb exec-out screencap -p > device-proof/shadow-correct.png
-            adb shell input tap 540 1780
-            sleep 0.8
-            adb exec-out screencap -p > device-proof/shadow-next.png
-
-            adb shell am force-stop com.pixelpicture.sisdevicelab
-            adb shell am start -n com.pixelpicture.sisdevicelab/.MainActivity --es url 'file:///android_asset/index.html?level=1'
-            sleep 2.5
-            adb exec-out screencap -p > device-proof/mirror-anomaly.png
-            adb shell input tap 760 900
-            sleep 0.5
-            adb exec-out screencap -p > device-proof/mirror-correct.png
-
-            adb shell am force-stop com.pixelpicture.sisdevicelab
-            adb shell am start -n com.pixelpicture.sisdevicelab/.MainActivity --es url 'file:///android_asset/index.html?level=2'
-            sleep 2.2
-            adb exec-out screencap -p > device-proof/domino-anomaly.png
-            adb shell input tap 620 1280
-            sleep 0.5
-            adb exec-out screencap -p > device-proof/domino-correct.png
-
-            adb shell am force-stop com.pixelpicture.sisdevicelab
-            adb shell am start -n com.pixelpicture.sisdevicelab/.MainActivity --es url 'file:///android_asset/index.html?creative=1&level=0&acq=1'
-            adb shell 'screenrecord --time-limit 5 /sdcard/shadow-device.mp4 >/dev/null 2>&1 &'
-            sleep 1.2
-            adb exec-out screencap -p > device-proof/acq-before-turn.png
-            sleep 0.8
-            adb exec-out screencap -p > device-proof/acq-after-turn.png
-            sleep 3.2
-            adb pull /sdcard/shadow-device.mp4 device-proof/shadow-device.mp4
-            adb logcat -d -s SIS_DEVICE_LAB:I '*:S' > device-proof/device-log.txt
-            grep -q 'LOAD file:///android_asset/index.html' device-proof/device-log.txt
-
+          script: bash scripts/android_device_lab.sh
       - name: Validate device artifacts
         run: |
           set -euo pipefail
           test "$(find device-proof -name '*.png' | wc -l)" -eq 11
           test -s device-proof/shadow-device.mp4
-          if [ -s device-proof/device-window.xml ]; then
-            ! grep -qiE 'Viewing full screen|Got it' device-proof/device-window.xml
-          fi
           python3 - <<'PY'
           import glob, hashlib, struct
           files=sorted(glob.glob('device-proof/*.png'))
-          assert len(files)==11, len(files)
+          assert len(files)==11
           hashes=[]
           for p in files:
               b=open(p,'rb').read()
-              assert b[:8]==b'\x89PNG\r\n\x1a\n', p
+              assert b[:8]==b'\x89PNG\r\n\x1a\n'
               w,h=struct.unpack('>II',b[16:24])
-              assert w>=720 and h>=1280, (p,w,h)
+              assert w>=720 and h>=1280
+              assert len(b)>30000, (p,len(b))
               hashes.append(hashlib.sha256(b).hexdigest())
-          assert len(set(hashes)) >= 8, 'device proof is unexpectedly static'
-          pairs=[
-            ('shadow-start.png','shadow-anomaly.png'),
-            ('shadow-wrongtap.png','shadow-correct.png'),
-            ('mirror-anomaly.png','mirror-correct.png'),
-            ('domino-anomaly.png','domino-correct.png'),
-            ('acq-before-turn.png','acq-after-turn.png'),
-          ]
-          for a,b in pairs:
-              ba=open('device-proof/'+a,'rb').read(); bb=open('device-proof/'+b,'rb').read()
-              assert hashlib.sha256(ba).digest()!=hashlib.sha256(bb).digest(), (a,b)
+          assert len(set(hashes))>=8
+          for a,b in [('shadow-start.png','shadow-anomaly.png'),('shadow-wrongtap.png','shadow-correct.png'),('mirror-anomaly.png','mirror-correct.png'),('domino-anomaly.png','domino-correct.png'),('acq-before-turn.png','acq-after-turn.png')]:
+              aa=open('device-proof/'+a,'rb').read(); bb=open('device-proof/'+b,'rb').read()
+              assert hashlib.sha256(aa).digest()!=hashlib.sha256(bb).digest(),(a,b)
           PY
-
       - uses: actions/upload-artifact@v4
         if: always()
         with:
