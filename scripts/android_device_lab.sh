@@ -6,9 +6,6 @@ PROOF=device-proof
 LOG_TAG=SIS_DEVICE_LAB
 mkdir -p "$PROOF"; : > "$PROOF/device-log.txt"
 adb install -r android-device-lab/app/build/outputs/apk/debug/app-debug.apk
-# The hosted emulator can surface launcher/Quickstep ANR dialogs during boot even while
-# our lab Activity is healthy. These are OS harness noise, not product UI, and they can
-# steal taps/screenshots. Suppress system crash/ANR dialogs before any measured frame.
 adb shell settings put global hide_error_dialogs 1 || true
 adb shell settings put global show_first_crash_dialog 0 || true
 adb shell settings put global show_restart_in_crash_dialog 0 || true
@@ -23,19 +20,16 @@ start_level(){ launch "$@"; wait_log '\[SIS_LAB\] READY' 50; }
 start_acq_fast(){ launch 0 true true; wait_log '\[SIS_LAB\] ACQ_BASE' 50; }
 latest_state_line(){ lab_log|grep -E '\[SIS_LAB\] (READY|HOTSPOT|SCENE) '|tail -1||true; }
 latest_hotspot_xy(){ latest_state_line|sed -E 's/.*(READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'; }
-latest_wrong_xy(){ latest_state_line|sed -E 's/.* WRONG ([0-9]+) ([0-9]+) DPR.*/\1 \2/'; }
+latest_wrong_xy(){ latest_state_line|sed -E 's/.* WRONG ([0-9]+) ([0-9]+).* DPR.*/\1 \2/'; }
 wait_mechanic_xy(){ local m="$1"; for _ in $(seq 1 40); do local l x; l=$(lab_log|grep -E "\[SIS_LAB\] (READY|HOTSPOT|SCENE) $m "|tail -1||true); x=$(echo "$l"|sed -E 's/.*(READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'); [[ "$x" =~ ^[0-9]+\ [0-9]+$ ]]&&{ echo "$x";return 0;}; sleep .1; done; return 1; }
 wait_next_xy(){ for _ in $(seq 1 30); do local x; x=$(lab_log|grep '\[SIS_LAB\] NEXT '|tail -1|sed -E 's/.*NEXT ([0-9]+) ([0-9]+).*/\1 \2/'||true); [[ "$x" =~ ^[0-9]+\ [0-9]+$ ]]&&{ echo "$x";return 0;}; sleep .1; done; return 1; }
 real_hotspot_tap(){ local x a b; x=$(latest_hotspot_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
-real_wrong_tap(){ local x a b; x=$(latest_wrong_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
+real_wrong_tap(){ local x a b; lab_log|grep -q 'WRONG_TARGET tapLayer'; x=$(latest_wrong_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
 real_next_tap(){ local x a b; x=$(wait_next_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
 shot_to(){ local o="$1"; for _ in $(seq 1 6); do adb exec-out screencap -p>"$o"; [ "$(wc -c<"$o")" -gt 25000 ]&&return 0; sleep .25; done; return 1; }
 shot(){ shot_to "$PROOF/$1.png"; }
 
 STAGE=cold_wrong_touch
-# Tap before any expensive screencap: the production challenge has a real 5 s deadline,
-# and a 1080x2400 hosted-emulator screencap can consume most of that budget. The previous
-# ordering accidentally let timeout reveal the correct answer before the intended wrong tap.
 start_level 0 false false
 real_wrong_tap
 wait_log '\[SIS_LAB\] VISUAL_READY WRONG FEEDBACK NO' 40
@@ -45,8 +39,6 @@ adb shell uiautomator dump /sdcard/device-window.xml >/dev/null 2>&1||true
 adb pull /sdcard/device-window.xml "$PROOF/device-window.xml" >/dev/null 2>&1||true
 ! grep -qiE 'Viewing full screen|Got it|isn.t responding|Close app|App info' "$PROOF/device-window.xml" 2>/dev/null
 append_log
-# Preserve a clean initial-state frame independently; no interaction follows this capture,
-# so screencap latency cannot invalidate the touch semantics being tested above.
 start_level 0 false false
 shot shadow-start
 append_log
@@ -59,8 +51,6 @@ wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED FIRST\.' 5
 sleep .55; shot shadow-correct
 real_next_tap
 wait_mechanic_xy mirror_desync >/dev/null
-# Android's compositor can briefly return the previous buffer immediately after a DOM transition.
-# Give the new level one full render window before preserving semantic evidence.
 sleep 1.0
 shot shadow-next
 mirror_xy=$(wait_mechanic_xy mirror_desync); read -r mx my<<<"$mirror_xy"; adb shell input tap "$mx" "$my"; wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE REFLECTION WAS LATE\.' 50
@@ -82,7 +72,6 @@ adb shell input tap "$tx" "$ty"
 adb shell input tap "$tx" "$ty"
 wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED FIRST\.' 50
 sleep .25
-# Double-tap may dispatch two raw click events, but must never double-score or double-reveal.
 test "$(lab_log|grep -c '\[SIS_LAB\] FEEDBACK THE SHADOW TURNED FIRST\.' || true)" -eq 1
 lab_log|grep -q '\[SIS_LAB\] STATE STREAK 1 THE SHADOW TURNED FIRST\.'
 ! lab_log|grep -q '\[SIS_LAB\] STATE STREAK [2-9] '
