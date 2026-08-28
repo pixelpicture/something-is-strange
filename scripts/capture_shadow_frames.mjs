@@ -87,13 +87,15 @@ async function pageClientForTarget(targetId) {
 }
 
 async function waitForRuntimeReady(page, variant) {
+  let lastValue = null;
   for (let i = 0; i < 100; i++) {
     try {
       const result = await page.send('Runtime.evaluate', {
-        expression: `(() => ({ready: document.readyState, scene: !!document.querySelector('#scene'), creative: document.body.classList.contains('creative-mode'), acq: document.body.classList.contains('shadow-acq')}))()`,
+        expression: `(() => ({ready: document.readyState, scene: !!document.querySelector('#scene'), creative: document.documentElement.classList.contains('creative-mode'), acq: document.documentElement.classList.contains('shadow-acq')}))()`,
         returnByValue: true
       });
       const value = result?.result?.value;
+      lastValue = value;
       const ready = value && value.ready !== 'loading' && value.scene && value.creative;
       const variantReady = variant === 'acquisition' ? value?.acq === true : true;
       if (ready && variantReady) {
@@ -103,7 +105,7 @@ async function waitForRuntimeReady(page, variant) {
     } catch {}
     await sleep(100);
   }
-  throw new Error(`${variant} runtime did not become ready`);
+  throw new Error(`${variant} runtime did not become ready; last=${JSON.stringify(lastValue)}`);
 }
 
 async function screenshot(client, variant, ms) {
@@ -120,8 +122,6 @@ async function captureVariant(browser, variant) {
   const extra = variant === 'acquisition' ? '&acq=1' : '';
   const url = `${base}?creative=1&level=0&revealAt=${reveal}${extra}`;
 
-  // Create each variant directly at its final URL. The previous load-event gate
-  // could miss Page.loadEventFired when the target loaded before CDP attached.
   const { targetId } = await browser.send('Target.createTarget', { url });
   const page = await pageClientForTarget(targetId);
   await waitForRuntimeReady(page, variant);
