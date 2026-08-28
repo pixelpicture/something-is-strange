@@ -29,18 +29,22 @@
   }
   function safeWrongPoint() {
     const s=sceneWrap.getBoundingClientRect(), h=hotspot.getBoundingClientRect(), scale=dpr();
-    const xs=[.18,.32,.50,.68,.82], ys=[.18,.32,.50,.68,.82];
+    const xs=[.50,.32,.68,.18,.82], ys=[.50,.32,.68,.18,.82], margin=8;
+    const valid=[];
     for (const yf of ys) for (const xf of xs) {
       const cx=s.left+s.width*xf, cy=s.top+s.height*yf;
-      const margin=8;
       const outsideHotspot=cx<h.left-margin||cx>h.right+margin||cy<h.top-margin||cy>h.bottom+margin;
       const target=document.elementFromPoint(cx,cy);
       if (outsideHotspot && (target===tapLayer || tapLayer.contains(target))) {
-        return [Math.round(cx*scale),Math.round(cy*scale),target.id||target.tagName||'unknown'];
+        const centerPenalty=Math.abs(xf-.5)+Math.abs(yf-.5);
+        valid.push({cx,cy,target,centerPenalty});
       }
     }
+    valid.sort((a,b)=>a.centerPenalty-b.centerPenalty);
+    const chosen=valid[0];
+    if (chosen) return [Math.round(chosen.cx*scale),Math.round(chosen.cy*scale),chosen.target.id||chosen.target.tagName||'unknown'];
     const cx=s.left+s.width*.18, cy=s.top+s.height*.18, target=document.elementFromPoint(cx,cy);
-    return [Math.round(cx*scale),Math.round(cy*scale),(target&& (target.id||target.tagName))||'unknown'];
+    return [Math.round(cx*scale),Math.round(cy*scale),(target&&(target.id||target.tagName))||'unknown'];
   }
   function reportState(label) {
     const [x,y]=centerPx(hotspot),[wx,wy,wt]=safeWrongPoint();
@@ -74,6 +78,8 @@
     }
   }
 
+  document.addEventListener('pointerdown',e=>log('POINTER_DOWN',e.target?.id||e.target?.tagName||'unknown',Math.round(e.clientX),Math.round(e.clientY)),true);
+  document.addEventListener('click',e=>log('CLICK_CAPTURE',e.target?.id||e.target?.tagName||'unknown',Math.round(e.clientX),Math.round(e.clientY)),true);
   hotspot.addEventListener('click',()=>{ log('EVENT','HOTSPOT_CLICK'); setTimeout(()=>log('STATE',streak.textContent.trim(),feedback.textContent.trim()),60); visualReady('CORRECT'); });
   tapLayer.addEventListener('click',()=>{ log('EVENT','WRONG_TAP'); setTimeout(()=>log('STATE',streak.textContent.trim(),feedback.textContent.trim()),60); visualReady('WRONG'); });
   nextBtn.addEventListener('click',()=>log('EVENT','NEXT_TAP'));
@@ -84,10 +90,6 @@
   traceAcq();
   requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>reportState('READY'),80)));
 
-  // Lab-only capture hygiene. This probe is injected only into the Android evidence shell.
-  // When requested explicitly, shift the acquisition script's timers by 1.5 s so Android's
-  // real screen recorder can already be running. The host trims that exact pre-roll, leaving
-  // the original 450/900/1300/1350 ms relative production motion unchanged in evidence.
   const params = new URLSearchParams(location.search);
   if (params.get('labdelay') === '1' && params.get('creative') === '1' && params.get('acq') === '1') {
     const nativeSetTimeout = window.setTimeout.bind(window);
