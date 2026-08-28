@@ -72,16 +72,23 @@ jobs:
           test "$(find device-proof -name '*.png' | wc -l)" -eq 11
           test -s device-proof/shadow-device.mp4
           test "$(wc -c < device-proof/shadow-device.mp4)" -gt 100000
+          test "$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 device-proof/shadow-device.mp4)" -eq 1080
+          test "$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 device-proof/shadow-device.mp4)" -eq 2400
+          python3 - <<'PY'
+          import subprocess
+          d=float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','csv=p=0','device-proof/shadow-device.mp4'], text=True).strip())
+          assert 3.8 <= d <= 4.2, d
+          PY
           ! grep -qiE 'Viewing full screen|Got it' device-proof/device-window.xml 2>/dev/null
           grep -q 'creative=1&acq=1' device-proof/device-log.txt
           test "$(grep -c '\[SIS_LAB\] EVENT HOTSPOT_CLICK' device-proof/device-log.txt)" -ge 5
           test "$(grep -c '\[SIS_LAB\] EVENT WRONG_TAP' device-proof/device-log.txt)" -ge 1
           test "$(grep -c '\[SIS_LAB\] EVENT NEXT_TAP' device-proof/device-log.txt)" -ge 3
           grep -q '\[SIS_LAB\] FEEDBACK NO' device-proof/device-log.txt
-          grep -q '\[SIS_LAB\].*shadow_acquisition.*TIMER_DISPLAY none' device-proof/device-log.txt
-          grep -q '\[SIS_LAB\].*SCENE mirror_desync' device-proof/device-log.txt
-          grep -q '\[SIS_LAB\].*SCENE domino_prediction' device-proof/device-log.txt
-          grep -q '\[SIS_LAB\].*SCENE wrong_light_switch' device-proof/device-log.txt
+          grep -Eq '\[SIS_LAB\] (READY|SCENE|HOTSPOT) shadow_acquisition .*TIMER_DISPLAY none' device-proof/device-log.txt
+          grep -Eq '\[SIS_LAB\] (READY|SCENE|HOTSPOT) mirror_desync ' device-proof/device-log.txt
+          grep -Eq '\[SIS_LAB\] (READY|SCENE|HOTSPOT) domino_prediction ' device-proof/device-log.txt
+          grep -Eq '\[SIS_LAB\] (READY|SCENE|HOTSPOT) wrong_light_switch ' device-proof/device-log.txt
           python3 - <<'PY'
           import glob, hashlib, struct
           files=sorted(glob.glob('device-proof/*.png'))
@@ -94,9 +101,6 @@ jobs:
               w,h=struct.unpack('>II',b[16:24])
               assert w>=720 and h>=1280, (p,w,h)
               hashes.append(hashlib.sha256(b).hexdigest())
-          # Headless gfxstream screencap may repeat a previously composited frame.
-          # Real ADB touches and in-page semantic events above carry interaction proof;
-          # screenshots remain the human-review visual evidence set.
           assert len(set(hashes)) >= 6, 'device proof is unexpectedly static'
           PY
 
