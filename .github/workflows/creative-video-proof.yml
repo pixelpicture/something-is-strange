@@ -35,14 +35,18 @@ jobs:
           "$XVFB" :99 -screen 0 540x960x24 -nolisten tcp >/tmp/xvfb.log 2>&1 &
           sleep 1
           record() {
-            name="$1"; level="$2"; reveal_at="$3"
-            port="$4"
+            name="$1"; level="$2"; reveal_at="$3"; port="$4"
             url="http://127.0.0.1:8000/?creative=1&level=${level}&revealAt=${reveal_at}"
-            "$CHROME" --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-infobars --disable-session-crashed-bubble --no-first-run --kiosk --window-position=0,0 --window-size=540,960 --remote-debugging-port="$port" "$url" >/tmp/${name}-chrome.log 2>&1 &
+            encoded=$(python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$url")
+            "$CHROME" --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-infobars --disable-session-crashed-bubble --no-first-run --kiosk --window-position=0,0 --window-size=540,960 --remote-debugging-port="$port" about:blank >/tmp/${name}-chrome.log 2>&1 &
             CPID=$!
-            for i in {1..30}; do curl -fsS "http://127.0.0.1:${port}/json" >/dev/null 2>&1 && break; sleep 0.1; done
-            sleep 0.15
-            ffmpeg -y -loglevel error -f x11grab -framerate 30 -video_size 540x960 -i :99.0 -t 4.4 -c:v libx264 -preset veryfast -crf 21 -pix_fmt yuv420p -movflags +faststart "creative-video/${name}.mp4"
+            for i in {1..40}; do curl -fsS "http://127.0.0.1:${port}/json/version" >/dev/null 2>&1 && break; sleep 0.1; done
+            ffmpeg -y -loglevel error -f x11grab -draw_mouse 0 -framerate 30 -video_size 540x960 -i :99.0 -t 5.1 -c:v libx264 -preset veryfast -crf 21 -pix_fmt yuv420p "/tmp/${name}-raw.mp4" &
+            FPID=$!
+            sleep 0.20
+            curl -fsS -X PUT "http://127.0.0.1:${port}/json/new?${encoded}" >/tmp/${name}-target.json
+            wait "$FPID"
+            ffmpeg -y -loglevel error -ss 0.38 -i "/tmp/${name}-raw.mp4" -t 4.4 -c:v libx264 -preset veryfast -crf 21 -pix_fmt yuv420p -movflags +faststart "creative-video/${name}.mp4"
             kill "$CPID" || true
             sleep 0.35
           }
