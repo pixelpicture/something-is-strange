@@ -3,6 +3,9 @@ name: Shadow Acquisition Frame Proof
 on:
   push:
     branches: [ feature/mvp-physical-proof ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   render:
