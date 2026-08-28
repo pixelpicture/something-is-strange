@@ -16,9 +16,11 @@ append_log(){ lab_log >> "$PROOF/device-log.txt"; }
 trap 'rc=$?; echo "[SIS_LAB_HOST] FAIL rc=$rc stage=${STAGE:-unknown}" >> "$PROOF/device-log.txt"; append_log; exit "$rc"' ERR
 wait_log(){ local p="$1" n="${2:-50}"; for _ in $(seq 1 "$n"); do lab_log|grep -Eq "$p"&&return 0; sleep .1; done; echo "Timed out: $p" >&2; append_log; return 1; }
 launch(){ local level="$1" creative="${2:-false}" acq="${3:-false}"; adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -n "$ACTIVITY" --ei level "$level" --ez creative "$creative" --ez acq "$acq" >/dev/null; }
-# The synchronous lab marker is emitted only after the real gameplay click handlers exist.
-# Waiting for it avoids spending the five-second challenge budget on extra rAF/logcat latency.
-start_level(){ launch "$@"; wait_log '\[SIS_LAB\] INTERACTION_READY' 120; }
+# Require both layers of readiness before physical input. JS handlers can become ready a
+# fraction of a second before Android reports WebView page completion; taps in that gap are
+# occasionally swallowed by the window transition even though elementFromPoint is correct.
+# Both markers arrive well inside the real five-second challenge budget.
+start_level(){ local level="$1"; launch "$@"; wait_log '\[SIS_LAB\] INTERACTION_READY' 120; wait_log "READY file:///android_asset/index.html\\?level=${level}([& ]|$)" 120; }
 latest_state_line(){ lab_log|grep -E '\[SIS_LAB\] (INTERACTION_READY|READY|HOTSPOT|SCENE) '|tail -1||true; }
 latest_hotspot_xy(){ latest_state_line|sed -E 's/.*(INTERACTION_READY|READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'; }
 latest_wrong_xy(){ latest_state_line|sed -E 's/.* WRONG ([0-9]+) ([0-9]+).* DPR.*/\1 \2/'; }
