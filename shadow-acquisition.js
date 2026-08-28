@@ -11,6 +11,7 @@
   prompt.textContent = 'WATCH HIS SHADOW.';
   streak.textContent = 'DON’T LOOK AWAY';
   timer.hidden = true;
+  timer.style.display = 'none';
 
   let observer;
   function patch() {
