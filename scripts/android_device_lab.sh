@@ -54,6 +54,32 @@ sleep 1.7; shot mirror-anomaly; real_hotspot_tap; wait_log '\[SIS_LAB\] VISUAL_R
 start_level 2 false false
 sleep 2.1; shot domino-anomaly; real_hotspot_tap; wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE CHAIN STOPS HERE\.' 50; sleep .55; shot domino-correct; append_log
 
+# Rapid duplicate touch must resolve only once and must not double-increment streak/state.
+start_level 0 false false
+sleep 1.9
+double_xy=$(latest_hotspot_xy); read -r tx ty<<<"$double_xy"
+adb shell input tap "$tx" "$ty"
+adb shell input tap "$tx" "$ty"
+wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED FIRST\.' 50
+sleep .25
+test "$(lab_log|grep -c '\[SIS_LAB\] EVENT HOTSPOT_CLICK' || true)" -eq 1
+lab_log|grep -q '\[SIS_LAB\] STATE STREAK 1 THE SHADOW TURNED FIRST\.'
+echo '[SIS_LAB_HOST] DOUBLE_TAP_PASS' >> "$PROOF/device-log.txt"
+append_log
+
+# Background/resume must keep the same measured activity/session usable without a reload.
+start_level 0 false false
+sleep .5
+adb shell input keyevent KEYCODE_HOME
+sleep .4
+adb shell am start -n "$ACTIVITY" --activity-reorder-to-front >/dev/null
+sleep .4
+test "$(lab_log|grep -c 'LOAD file:///android_asset/index.html?level=0' || true)" -eq 1
+real_hotspot_tap
+wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED FIRST\.' 50
+echo '[SIS_LAB_HOST] BACKGROUND_RESUME_PASS' >> "$PROOF/device-log.txt"
+append_log
+
 # Exact acquisition runtime: probe is loaded before acquisition script and exposes base/turn moments without changing timings.
 start_acq_fast
 shot acq-before-turn
@@ -71,3 +97,5 @@ rm -rf "$TMP_FRAMES"; append_log
 grep -q 'LOAD file:///android_asset/index.html' "$PROOF/device-log.txt"
 grep -q '\[SIS_LAB\] ACQ_BASE' "$PROOF/device-log.txt"
 grep -q '\[SIS_LAB\] ACQ_TURN' "$PROOF/device-log.txt"
+grep -q '\[SIS_LAB_HOST\] DOUBLE_TAP_PASS' "$PROOF/device-log.txt"
+grep -q '\[SIS_LAB_HOST\] BACKGROUND_RESUME_PASS' "$PROOF/device-log.txt"
