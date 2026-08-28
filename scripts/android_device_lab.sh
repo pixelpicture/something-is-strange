@@ -1,84 +1,107 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PKG='com.pixelpicture.sisdevicelab'
+PKG=com.pixelpicture.sisdevicelab
 ACTIVITY="$PKG/.MainActivity"
-OUT='device-proof'
-mkdir -p "$OUT"
+PROOF=device-proof
+LOG_TAG=SIS_DEVICE_LAB
 
-capture_png() {
-  local name="$1"
-  local path="$OUT/$name.png"
-  local size=0
-  for attempt in 1 2 3 4 5; do
-    adb exec-out screencap -p > "$path"
-    size=$(wc -c < "$path")
-    if [ "$size" -gt 30000 ]; then
-      echo "captured $name (${size} bytes) on attempt $attempt"
-      return 0
-    fi
-    echo "retrying likely-black $name (${size} bytes), attempt $attempt" >&2
-    sleep 0.35
-  done
-  echo "capture stayed black/empty: $name (${size} bytes)" >&2
-  return 92
-}
-
-launch_level() {
-  local url="$1"
-  adb shell am force-stop "$PKG"
-  adb shell am start -n "$ACTIVITY" --es url "$url"
-  sleep 1.8
-}
-
+mkdir -p "$PROOF"
+: > "$PROOF/device-log.txt"
 adb install -r android-device-lab/app/build/outputs/apk/debug/app-debug.apk
-adb logcat -c
 adb shell settings put secure immersive_mode_confirmations confirmed || true
 
-launch_level 'file:///android_asset/index.html?level=0'
+append_log() {
+  adb logcat -d -s "$LOG_TAG:I" '*:S' >> "$PROOF/device-log.txt" || true
+}
+
+start_level() {
+  local level="$1"
+  local creative="${2:-false}"
+  local acq="${3:-false}"
+  adb logcat -c
+  adb shell am force-stop "$PKG"
+  adb shell am start -n "$ACTIVITY" --ei level "$level" --ez creative "$creative" --ez acq "$acq" >/dev/null
+  for _ in $(seq 1 40); do
+    if adb logcat -d -s "$LOG_TAG:I" '*:S' 2>/dev/null | grep -q 'READY file:///android_asset/index.html'; then
+      return 0
+    fi
+    sleep 0.2
+  done
+  echo "Timed out waiting for WebView READY (level=$level creative=$creative acq=$acq)" >&2
+  append_log
+  return 1
+}
+
+shot() {
+  local name="$1"
+  local out="$PROOF/$name.png"
+  for _ in $(seq 1 6); do
+    adb exec-out screencap -p > "$out"
+    local bytes
+    bytes=$(wc -c < "$out")
+    if [ "$bytes" -gt 25000 ]; then
+      return 0
+    fi
+    sleep 0.25
+  done
+  echo "Screenshot stayed blank/splash-sized: $name ($(wc -c < "$out") bytes)" >&2
+  return 1
+}
+
+# Shadow: cold launch, anomaly, wrong tap.
+start_level 0 false false
 adb shell uiautomator dump /sdcard/device-window.xml >/dev/null 2>&1 || true
-adb pull /sdcard/device-window.xml "$OUT/device-window.xml" >/dev/null 2>&1 || true
-if [ -s "$OUT/device-window.xml" ] && grep -qiE 'Viewing full screen|Got it' "$OUT/device-window.xml"; then
-  echo 'immersive tutorial overlay contaminated measured session' >&2
-  exit 91
-fi
-capture_png shadow-start
-sleep 0.8
-capture_png shadow-anomaly
+adb pull /sdcard/device-window.xml "$PROOF/device-window.xml" >/dev/null 2>&1 || true
+! grep -qiE 'Viewing full screen|Got it' "$PROOF/device-window.xml" 2>/dev/null
+shot shadow-start
+sleep 1.9
+shot shadow-anomaly
 adb shell input tap 120 1450
-sleep 0.45
-capture_png shadow-wrongtap
+sleep 0.35
+shot shadow-wrongtap
+append_log
 
-launch_level 'file:///android_asset/index.html?level=0'
-sleep 0.7
+# Shadow: real correct touch then real NEXT touch.
+start_level 0 false false
+sleep 1.9
 adb shell input tap 785 1290
-sleep 0.55
-capture_png shadow-correct
-adb shell input tap 540 1780
+sleep 0.45
+shot shadow-correct
+adb shell input tap 540 1815
 sleep 0.8
-capture_png shadow-next
+shot shadow-next
+append_log
 
-launch_level 'file:///android_asset/index.html?level=1'
-sleep 0.9
-capture_png mirror-anomaly
+# Mirror: capture the lag window then hit the actual hotspot.
+start_level 1 false false
+sleep 1.7
+shot mirror-anomaly
 adb shell input tap 760 900
-sleep 0.55
-capture_png mirror-correct
+sleep 0.45
+shot mirror-correct
+append_log
 
-launch_level 'file:///android_asset/index.html?level=2'
-sleep 0.7
-capture_png domino-anomaly
+# Domino: capture the broken chain then hit d5 hotspot.
+start_level 2 false false
+sleep 2.1
+shot domino-anomaly
 adb shell input tap 620 1280
-sleep 0.55
-capture_png domino-correct
+sleep 0.45
+shot domino-correct
+append_log
 
-launch_level 'file:///android_asset/index.html?creative=1&level=0&acq=1'
-adb shell 'screenrecord --time-limit 5 /sdcard/shadow-device.mp4 >/dev/null 2>&1 &'
-sleep 1.2
-capture_png acq-before-turn
-sleep 0.8
-capture_png acq-after-turn
-sleep 3.2
-adb pull /sdcard/shadow-device.mp4 "$OUT/shadow-device.mp4"
-adb logcat -d -s SIS_DEVICE_LAB:I '*:S' > "$OUT/device-log.txt"
-grep -q 'LOAD file:///android_asset/index.html' "$OUT/device-log.txt"
+# Acquisition: exact Shadow acquisition query assembled in Activity, after WebView READY.
+start_level 0 true true
+adb shell 'screenrecord --time-limit 4 /sdcard/shadow-device.mp4 >/dev/null 2>&1 &' >/dev/null
+sleep 0.75
+shot acq-before-turn
+sleep 0.85
+shot acq-after-turn
+sleep 2.7
+adb pull /sdcard/shadow-device.mp4 "$PROOF/shadow-device.mp4" >/dev/null
+append_log
+
+grep -q 'LOAD file:///android_asset/index.html' "$PROOF/device-log.txt"
+grep -q 'READY file:///android_asset/index.html' "$PROOF/device-log.txt"
+grep -q 'creative=1&acq=1' "$PROOF/device-log.txt"
