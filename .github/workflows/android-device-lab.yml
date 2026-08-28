@@ -10,7 +10,7 @@ on:
 jobs:
   physical-gameplay:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
 
@@ -36,16 +36,6 @@ jobs:
             exit 1
           fi
 
-      - name: Ensure free ffmpeg tooling
-        run: |
-          set -euo pipefail
-          if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq ffmpeg
-          fi
-          ffmpeg -version | head -1
-          ffprobe -version | head -1
-
       - name: Stage exact prototype into lab shell
         run: |
           set -euo pipefail
@@ -62,9 +52,31 @@ jobs:
           p.write_text(s)
           PY
 
-      - name: Build lab APK
+      - name: Build lab APK with bounded dependency retry
         working-directory: android-device-lab
-        run: gradle --no-daemon assembleDebug
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "Gradle build attempt ${attempt}/3"
+            if gradle --no-daemon assembleDebug; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo 'Gradle build failed after bounded retries'
+              exit 1
+            fi
+            sleep $((attempt * 30))
+          done
+
+      - name: Ensure free ffmpeg tooling
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg
+          fi
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
 
       - name: Run real Android emulator interactions
         uses: reactivecircus/android-emulator-runner@v2
