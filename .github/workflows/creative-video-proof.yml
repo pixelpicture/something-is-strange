@@ -7,7 +7,7 @@ on:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - name: Resolve Chrome
@@ -21,23 +21,23 @@ jobs:
           python3 -m http.server 8000 >/tmp/sis-http.log 2>&1 &
           for i in {1..20}; do curl -fsS http://127.0.0.1:8000/ >/dev/null && exit 0; sleep 0.2; done
           cat /tmp/sis-http.log; exit 1
-      - name: Capture deterministic A/B frames
+      - name: Launch one headless Chrome session
         run: |
           set -euo pipefail
-          mkdir -p shadow-proof
-          for variant in baseline acquisition; do
-            if [ "$variant" = baseline ]; then reveal=3000; extra=''; else reveal=2550; extra='&acq=1'; fi
-            for ms in 200 1200 1700 2500 3500; do
-              out="shadow-proof/${variant}-t${ms}.png"
-              "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=540,960 \
-                --virtual-time-budget="$ms" --run-all-compositor-stages-before-draw --screenshot="$out" \
-                "http://127.0.0.1:8000/?creative=1&level=0&revealAt=${reveal}${extra}" >/dev/null 2>&1
-              test "$(stat -c%s "$out")" -gt 5000
-            done
-          done
+          rm -rf /tmp/sis-chrome
+          "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars \
+            --remote-debugging-port=9222 --user-data-dir=/tmp/sis-chrome \
+            --window-size=540,960 about:blank >/tmp/sis-chrome.log 2>&1 &
+          for i in {1..50}; do curl -fsS http://127.0.0.1:9222/json/list >/dev/null && exit 0; sleep 0.1; done
+          cat /tmp/sis-chrome.log; exit 1
+      - name: Capture deterministic A/B frames in one browser session
+        run: |
+          set -euo pipefail
+          node scripts/capture_shadow_frames.mjs
       - name: Validate physical change
         run: |
           set -euo pipefail
+          test "$(find shadow-proof -name '*.png' | wc -l)" -eq 10
           for variant in baseline acquisition; do
             cmp -s "shadow-proof/${variant}-t200.png" "shadow-proof/${variant}-t3500.png" && exit 1 || true
           done
