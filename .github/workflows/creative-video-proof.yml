@@ -31,8 +31,15 @@ jobs:
           "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars \
             --remote-debugging-port=9222 --user-data-dir=/tmp/sis-chrome \
             --window-size=540,960 about:blank >/tmp/sis-chrome.log 2>&1 &
-          for i in {1..50}; do curl -fsS http://127.0.0.1:9222/json/list >/dev/null && exit 0; sleep 0.1; done
-          cat /tmp/sis-chrome.log; exit 1
+          for i in {1..90}; do
+            if curl -fsS http://127.0.0.1:9222/json/version >/tmp/sis-devtools.json; then
+              cat /tmp/sis-devtools.json
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat /tmp/sis-chrome.log
+          exit 1
       - name: Capture deterministic A/B frames in one browser session
         run: |
           set -euo pipefail
