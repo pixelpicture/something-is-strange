@@ -35,39 +35,33 @@ jobs:
           "$XVFB" :99 -screen 0 540x960x24 -nolisten tcp >/tmp/xvfb.log 2>&1 &
           sleep 1
           record() {
-            name="$1"; level="$2"; reveal_at="$3"; port="$4"
+            name="$1"; level="$2"; reveal_at="$3"
             url="http://127.0.0.1:8000/?creative=1&level=${level}&revealAt=${reveal_at}"
-            encoded=$(python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$url")
             profile="/tmp/sis-chrome-${name}"
             rm -rf "$profile"
-            "$CHROME" --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-infobars --disable-session-crashed-bubble --no-first-run --kiosk --window-position=0,0 --window-size=540,960 --user-data-dir="$profile" --remote-debugging-address=127.0.0.1 --remote-debugging-port="$port" about:blank >/tmp/${name}-chrome.log 2>&1 &
+            "$CHROME" --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-infobars --disable-session-crashed-bubble --no-first-run --kiosk --window-position=0,0 --window-size=540,960 --user-data-dir="$profile" about:blank >/tmp/${name}-chrome.log 2>&1 &
             CPID=$!
-            ready=0
-            for i in {1..60}; do
-              if curl -fsS "http://127.0.0.1:${port}/json/version" >/dev/null 2>&1; then ready=1; break; fi
-              sleep 0.1
-            done
-            if [ "$ready" != 1 ]; then cat /tmp/${name}-chrome.log; exit 1; fi
+            sleep 0.8
             ffmpeg -y -loglevel error -f x11grab -draw_mouse 0 -framerate 30 -video_size 540x960 -i :99.0 -t 5.1 -c:v libx264 -preset veryfast -crf 21 -pix_fmt yuv420p "/tmp/${name}-raw.mp4" &
             FPID=$!
             sleep 0.20
-            curl -fsS -X PUT "http://127.0.0.1:${port}/json/new?${encoded}" >/tmp/${name}-target.json
+            "$CHROME" --no-sandbox --user-data-dir="$profile" "$url" >/tmp/${name}-navigate.log 2>&1 || true
             wait "$FPID"
-            ffmpeg -y -loglevel error -ss 0.38 -i "/tmp/${name}-raw.mp4" -t 4.4 -c:v libx264 -preset veryfast -crf 21 -pix_fmt yuv420p -movflags +faststart "creative-video/${name}.mp4"
+            ffmpeg -y -loglevel error -ss 0.55 -i "/tmp/${name}-raw.mp4" -t 4.3 -c:v libx264 -preset veryfast -crf 21 -pix_fmt yuv420p -movflags +faststart "creative-video/${name}.mp4"
             kill "$CPID" || true
             rm -rf "$profile"
             sleep 0.35
           }
-          record shadow 0 3000 9222
-          record mirror 1 2800 9223
-          record domino 2 2600 9224
+          record shadow 0 3000
+          record mirror 1 2800
+          record domino 2 2600
       - name: Validate videos and extract review frames
         run: |
           set -euo pipefail
           for f in creative-video/*.mp4; do
             test -s "$f"
             dur=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$f")
-            python3 -c 'import sys; v=float(sys.argv[1]); assert 4.0 <= v <= 4.8, v' "$dur"
+            python3 -c 'import sys; v=float(sys.argv[1]); assert 4.0 <= v <= 4.7, v' "$dur"
             base="${f%.mp4}"
             ffmpeg -y -loglevel error -ss 0.20 -i "$f" -frames:v 1 "${base}-t020.png"
             ffmpeg -y -loglevel error -ss 1.20 -i "$f" -frames:v 1 "${base}-t120.png"
