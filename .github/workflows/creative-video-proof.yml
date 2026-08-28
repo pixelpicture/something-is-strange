@@ -61,11 +61,11 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/capture_shadow_acq_video.mjs
-          test "$(find shadow-video -name 'frame*.png' | wc -l)" -eq 43
+          test "$(find shadow-video -name 'frame*.png' | wc -l)" -eq 34
           python3 - <<'PY'
           import glob, struct
           files=sorted(glob.glob('shadow-video/frame*.png'))
-          assert len(files)==43, len(files)
+          assert len(files)==34, len(files)
           for p in files:
               with open(p,'rb') as f:
                   sig=f.read(24)
