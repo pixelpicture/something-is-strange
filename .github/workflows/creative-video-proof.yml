@@ -17,9 +17,12 @@ jobs:
         run: |
           set -euo pipefail
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || true)"
-          FFMPEG="$(command -v ffmpeg || true)"
           test -n "$CHROME"
-          test -n "$FFMPEG"
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg >/tmp/sis-ffmpeg-install.log 2>&1 || { cat /tmp/sis-ffmpeg-install.log; exit 1; }
+          fi
+          FFMPEG="$(command -v ffmpeg)"
           echo "CHROME=$CHROME" >> "$GITHUB_ENV"
           echo "FFMPEG=$FFMPEG" >> "$GITHUB_ENV"
       - name: Serve prototype
