@@ -18,13 +18,10 @@ jobs:
           set -euo pipefail
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || true)"
           FFMPEG="$(command -v ffmpeg || true)"
-          FFPROBE="$(command -v ffprobe || true)"
           test -n "$CHROME"
           test -n "$FFMPEG"
-          test -n "$FFPROBE"
           echo "CHROME=$CHROME" >> "$GITHUB_ENV"
           echo "FFMPEG=$FFMPEG" >> "$GITHUB_ENV"
-          echo "FFPROBE=$FFPROBE" >> "$GITHUB_ENV"
       - name: Serve prototype
         run: |
           python3 -m http.server 8000 >/tmp/sis-http.log 2>&1 &
@@ -62,17 +59,21 @@ jobs:
           set -euo pipefail
           node scripts/capture_shadow_acq_video.mjs
           test "$(find shadow-video -name 'frame*.png' | wc -l)" -eq 43
+          python3 - <<'PY'
+          import glob, struct
+          files=sorted(glob.glob('shadow-video/frame*.png'))
+          assert len(files)==43, len(files)
+          for p in files:
+              with open(p,'rb') as f:
+                  sig=f.read(24)
+              assert sig[:8] == b'\x89PNG\r\n\x1a\n', p
+              w,h=struct.unpack('>II', sig[16:24])
+              assert (w,h)==(540,960), (p,w,h)
+          PY
           "$FFMPEG" -y -loglevel error -framerate 10 -i shadow-video/frame%03d.png \
             -c:v libx264 -pix_fmt yuv420p -movflags +faststart shadow-acquisition.mp4
           test -s shadow-acquisition.mp4
-          test "$($FFPROBE -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 shadow-acquisition.mp4)" = "540"
-          test "$($FFPROBE -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 shadow-acquisition.mp4)" = "960"
-          DURATION="$($FFPROBE -v error -show_entries format=duration -of csv=p=0 shadow-acquisition.mp4)"
-          python3 - "$DURATION" <<'PY'
-          import sys
-          d=float(sys.argv[1])
-          assert 4.2 <= d <= 4.4, d
-          PY
+          "$FFMPEG" -v error -i shadow-acquisition.mp4 -f null -
           rm -rf shadow-video
       - uses: actions/upload-artifact@v4
         if: always()
