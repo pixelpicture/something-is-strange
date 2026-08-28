@@ -40,25 +40,6 @@ class CdpClient {
     this.listeners.get(method).push(fn);
   }
 
-  once(method, timeoutMs = 10000) {
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        const arr = this.listeners.get(method) || [];
-        const idx = arr.indexOf(fn);
-        if (idx >= 0) arr.splice(idx, 1);
-        reject(new Error(`Timed out waiting for ${method}`));
-      }, timeoutMs);
-      const fn = params => {
-        clearTimeout(timer);
-        const arr = this.listeners.get(method) || [];
-        const idx = arr.indexOf(fn);
-        if (idx >= 0) arr.splice(idx, 1);
-        resolve(params);
-      };
-      this.on(method, fn);
-    });
-  }
-
   send(method, params = {}) {
     const id = this.nextId++;
     this.ws.send(JSON.stringify({ id, method, params }));
@@ -91,6 +72,7 @@ async function pageClientForTarget(targetId) {
       const client = new CdpClient(page.webSocketDebuggerUrl);
       await client.open();
       await client.send('Page.enable');
+      await client.send('Runtime.enable');
       await client.send('Emulation.setDeviceMetricsOverride', {
         width: 540,
         height: 960,
@@ -102,6 +84,26 @@ async function pageClientForTarget(targetId) {
     await sleep(100);
   }
   throw new Error(`Page target ${targetId} not ready`);
+}
+
+async function waitForRuntimeReady(page, variant) {
+  for (let i = 0; i < 100; i++) {
+    try {
+      const result = await page.send('Runtime.evaluate', {
+        expression: `(() => ({ready: document.readyState, scene: !!document.querySelector('#scene'), creative: document.body.classList.contains('creative-mode'), acq: document.body.classList.contains('shadow-acq')}))()`,
+        returnByValue: true
+      });
+      const value = result?.result?.value;
+      const ready = value && value.ready !== 'loading' && value.scene && value.creative;
+      const variantReady = variant === 'acquisition' ? value?.acq === true : true;
+      if (ready && variantReady) {
+        console.log(`${variant} runtime ready`, JSON.stringify(value));
+        return;
+      }
+    } catch {}
+    await sleep(100);
+  }
+  throw new Error(`${variant} runtime did not become ready`);
 }
 
 async function screenshot(client, variant, ms) {
@@ -118,11 +120,11 @@ async function captureVariant(browser, variant) {
   const extra = variant === 'acquisition' ? '&acq=1' : '';
   const url = `${base}?creative=1&level=0&revealAt=${reveal}${extra}`;
 
-  const { targetId } = await browser.send('Target.createTarget', { url: 'about:blank' });
+  // Create each variant directly at its final URL. The previous load-event gate
+  // could miss Page.loadEventFired when the target loaded before CDP attached.
+  const { targetId } = await browser.send('Target.createTarget', { url });
   const page = await pageClientForTarget(targetId);
-  const loaded = page.once('Page.loadEventFired');
-  await page.send('Page.navigate', { url });
-  await loaded;
+  await waitForRuntimeReady(page, variant);
 
   const start = Date.now();
   let previousMark = 0;
