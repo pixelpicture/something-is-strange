@@ -63,8 +63,10 @@ adb shell input tap "$tx" "$ty"
 adb shell input tap "$tx" "$ty"
 wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED FIRST\.' 50
 sleep .25
-test "$(lab_log|grep -c '\[SIS_LAB\] EVENT HOTSPOT_CLICK' || true)" -eq 1
+# Double-tap may dispatch two raw click events, but must never double-score or double-reveal.
+test "$(lab_log|grep -c '\[SIS_LAB\] FEEDBACK THE SHADOW TURNED FIRST\.' || true)" -eq 1
 lab_log|grep -q '\[SIS_LAB\] STATE STREAK 1 THE SHADOW TURNED FIRST\.'
+! lab_log|grep -q '\[SIS_LAB\] STATE STREAK [2-9] '
 echo '[SIS_LAB_HOST] DOUBLE_TAP_PASS' >> "$PROOF/device-log.txt"
 append_log
 
