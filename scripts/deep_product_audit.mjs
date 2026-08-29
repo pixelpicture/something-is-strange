@@ -15,9 +15,6 @@ const probe = read('scripts/device_lab_probe.js');
 const fail = msg => { throw new Error(msg); };
 const require = (cond,msg) => { if(!cond) fail(msg); };
 
-// 100 deterministic adversarial comprehension simulations: 10 profiles × 10 puzzles.
-// These are machine proxies, not claims about 100 real humans. They encode failure modes seen in
-// physical phone use: slow reading, premature taps, missed motion, repeated wrong taps and timeout.
 const profiles = [
   {name:'fast', read:650, inspect:900, wrong:0},
   {name:'normal', read:1200, inspect:1500, wrong:1},
@@ -51,7 +48,6 @@ for (const [i,l] of levels.entries()) {
 }
 require(simulations === 100, `Expected 100 simulations, got ${simulations}`);
 
-// 30 architecture invariants. Deliberately numbered so regressions identify the boundary violated.
 const arch = [
   [html.includes('engine-v3.js') && !html.includes('engine-v2.js'), '01 single playable engine'],
   [!html.includes('content-repairs.js'), '02 no post-render patch layer'],
@@ -77,7 +73,7 @@ const arch = [
   [activity.includes('file:///android_asset/index.html?level=0'), '22 launcher defaults to playable mode'],
   [!activity.includes('file:///android_asset/index.html?creative=1&level=0&acq=1'), '23 launcher cannot default to acquisition'],
   [probe.includes("if (params.get('labdelay') !== '1') return"), '24 lab instrumentation opt-in only'],
-  [engine.includes("emit('level_start'"), '25 level-start telemetry'],
+  [engine.includes("'level_replay':'level_start'"), '25 replay-aware level-start telemetry'],
   [engine.includes("emit('wrong_tap'"), '26 wrong-tap telemetry'],
   [engine.includes("emit('correct_tap'"), '27 correct-tap telemetry'],
   [engine.includes("emit('answer_timeout'"), '28 timeout telemetry'],
@@ -87,8 +83,6 @@ const arch = [
 for (const [ok,name] of arch) require(ok, `ARCH ${name} FAIL`);
 require(arch.length === 30, `Expected 30 architecture invariants, got ${arch.length}`);
 
-// Animation quality proxies: every puzzle must stage its anomaly after a readable baseline; dynamic
-// mechanics need multiple temporal beats, and Shadow must visibly move the person as well as shadow.
 const expectations = {
   shadow_desync:4, extra_shadow:1, wrong_light_switch:2, reverse_splash:5, color_theft:3,
   door_two_rooms:3, mirror_desync:2, haircut_mirror:1, wrong_occlusion:3, domino_prediction:2
