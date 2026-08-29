@@ -1,4 +1,10 @@
 (() => {
+  const params = new URLSearchParams(location.search);
+  // Architectural boundary: the shipped APK contains this diagnostic helper only because the
+  // same binary is used for evidence, but normal launcher/playable mode must be behaviorally
+  // identical to the web runtime. Instrumentation activates only on an explicit lab marker.
+  if (params.get('labdelay') !== '1') return;
+
   const log = (...parts) => console.info('[SIS_LAB]', ...parts);
   const hotspot = document.getElementById('hotspot');
   const tapLayer = document.getElementById('tapLayer');
@@ -89,16 +95,10 @@
   new MutationObserver(()=>scheduleState('HOTSPOT')).observe(hotspot,{attributes:true,attributeFilter:['style']});
   traceAcq();
 
-  // Interaction readiness is intentionally synchronous. The gameplay engine has already
-  // installed its click handlers before this lab-only probe is injected, so this gives the
-  // host a verified physical target without spending most of the real five-second challenge
-  // budget waiting for extra animation frames or additional logcat round-trips.
   reportState('INTERACTION_READY');
   requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>reportState('READY'),80)));
 
-  // Lab-only capture hygiene. This probe is injected only into the Android evidence shell.
-  const params = new URLSearchParams(location.search);
-  if (params.get('labdelay') === '1' && params.get('creative') === '1' && params.get('acq') === '1') {
+  if (params.get('creative') === '1' && params.get('acq') === '1') {
     const nativeSetTimeout = window.setTimeout.bind(window);
     window.setTimeout = (fn, ms, ...args) => nativeSetTimeout(fn, (Number(ms) || 0) + 1500, ...args);
     log('ACQ_DELAY_ARMED',1500);
