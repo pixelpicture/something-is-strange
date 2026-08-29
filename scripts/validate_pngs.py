@@ -3,7 +3,7 @@ import pathlib, struct, sys, zlib
 root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'proof')
 bases = [
     'shadow','extra-shadow','light-switch','reverse-splash','color-theft',
-    'door-two-rooms','late-mirror','haircut-mirror','wrong-occlusion','domino-break'
+    'door-two-rooms','wrong-mirror','haircut-mirror','wrong-occlusion','domino-break'
 ]
 required = {f'{base}-{state}.png' for base in bases for state in ('watch','answer','reveal')}
 files = sorted(root.glob('*.png'))
