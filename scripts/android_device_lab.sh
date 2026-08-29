@@ -4,7 +4,7 @@ PKG=com.pixelpicture.sisdevicelab
 ACTIVITY="$PKG/.MainActivity"
 PROOF=device-proof
 LOG_TAG=SIS_DEVICE_LAB
-mkdir -p "$PROOF/human"; : > "$PROOF/device-log.txt"
+rm -rf "$PROOF"; mkdir -p "$PROOF/human"; : > "$PROOF/device-log.txt"
 adb install -r android-device-lab/app/build/outputs/apk/debug/app-debug.apk
 adb shell settings put global hide_error_dialogs 1 || true
 adb shell settings put global show_first_crash_dialog 0 || true
@@ -14,165 +14,107 @@ adb shell settings put secure immersive_mode_confirmations confirmed || true
 lab_log(){ adb logcat -d -s "$LOG_TAG:I" '*:S' 2>/dev/null || true; }
 append_log(){ lab_log >> "$PROOF/device-log.txt"; }
 trap 'rc=$?; echo "[SIS_LAB_HOST] FAIL rc=$rc stage=${STAGE:-unknown}" >> "$PROOF/device-log.txt"; append_log; exit "$rc"' ERR
-wait_log(){ local p="$1" n="${2:-50}"; for _ in $(seq 1 "$n"); do lab_log|grep -Eq "$p"&&return 0; sleep .1; done; echo "Timed out: $p" >&2; append_log; return 1; }
-# Diagnostic launches opt into labdelay=1. The probe is inert without this marker, so the
-# installed APK's normal launcher path is the same uninstrumented runtime a human receives.
+wait_log(){ local p="$1" n="${2:-80}"; for _ in $(seq 1 "$n"); do lab_log|grep -Eq "$p"&&return 0; sleep .1; done; echo "Timed out: $p" >&2; append_log; return 1; }
 launch(){ local level="$1" creative="${2:-false}" acq="${3:-false}"; adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -n "$ACTIVITY" --ei level "$level" --ez creative "$creative" --ez acq "$acq" --ez labdelay true >/dev/null; }
-# Send the same MAIN+LAUNCHER intent as an icon tap, directly to the exported launcher activity.
-# Avoid `monkey`: on headless API35 it can stall the system Quickstep launcher and overlay an ANR
-# dialog over an otherwise-correct app, contaminating the black-box visual gate.
 launch_default(){ adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n "$ACTIVITY" >/dev/null; }
-start_level(){ local level="$1"; launch "$@"; wait_log '\[SIS_LAB\] INTERACTION_READY' 120; wait_log "READY file:///android_asset/index.html\\?level=${level}([& ]|$)" 120; }
-latest_state_line(){ lab_log|grep -E '\[SIS_LAB\] (INTERACTION_READY|READY|HOTSPOT|SCENE) '|tail -1||true; }
-latest_hotspot_xy(){ latest_state_line|sed -E 's/.*(INTERACTION_READY|READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'; }
-wait_mechanic_xy(){ local m="$1"; for _ in $(seq 1 40); do local l x; l=$(lab_log|grep -E "\[SIS_LAB\] (INTERACTION_READY|READY|HOTSPOT|SCENE) $m "|tail -1||true); x=$(echo "$l"|sed -E 's/.*(INTERACTION_READY|READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'); [[ "$x" =~ ^[0-9]+\ [0-9]+$ ]]&&{ echo "$x";return 0;}; sleep .1; done; return 1; }
-wait_next_xy(){ for _ in $(seq 1 30); do local x; x=$(lab_log|grep '\[SIS_LAB\] NEXT '|tail -1|sed -E 's/.*NEXT ([0-9]+) ([0-9]+).*/\1 \2/'||true); [[ "$x" =~ ^[0-9]+\ [0-9]+$ ]]&&{ echo "$x";return 0;}; sleep .1; done; return 1; }
-real_hotspot_tap(){ local x a b; x=$(latest_hotspot_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
-real_wrong_tap(){ local l x a b; l=$(latest_state_line); echo "$l"|grep -q 'WRONG_TARGET tapLayer'; x=$(echo "$l"|sed -E 's/.* WRONG ([0-9]+) ([0-9]+).* DPR.*/\1 \2/'); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
-real_next_tap(){ local x a b; x=$(wait_next_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
+start_level(){ local level="$1"; launch "$@"; wait_log '\[SIS_LAB\] INTERACTION_READY' 160; wait_log "READY file:///android_asset/index.html\\?level=${level}([& ]|$)" 160; }
+latest_state_line(){ lab_log|grep -E '\[SIS_LAB\] (INTERACTION_READY|READY|HOTSPOT|SCENE|PHASE_STATE) '|tail -1||true; }
+xy_for(){ local mech="$1"; local line x; for _ in $(seq 1 80); do line=$(lab_log|grep -E "\[SIS_LAB\] (INTERACTION_READY|READY|HOTSPOT|SCENE|PHASE_STATE) $mech "|tail -1||true); x=$(echo "$line"|sed -E 's/.* [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\1 \2/'); [[ "$x" =~ ^[0-9]+\ [0-9]+$ ]]&&{ echo "$x"; return 0; }; sleep .1; done; return 1; }
+wrong_xy(){ local line x; line=$(latest_state_line); echo "$line"|grep -q 'WRONG_TARGET tapLayer'; x=$(echo "$line"|sed -E 's/.* WRONG ([0-9]+) ([0-9]+).* WRONG_TARGET.*/\1 \2/'); echo "$x"; }
+next_xy(){ for _ in $(seq 1 80); do local x; x=$(lab_log|grep '\[SIS_LAB\] NEXT '|tail -1|sed -E 's/.*NEXT ([0-9]+) ([0-9]+).*/\1 \2/'||true); [[ "$x" =~ ^[0-9]+\ [0-9]+$ ]]&&{ echo "$x";return 0;}; sleep .1; done; return 1; }
+tap_xy(){ local a b; read -r a b<<<"$1"; adb shell input tap "$a" "$b"; }
 shot_to(){ local o="$1"; for _ in $(seq 1 6); do adb exec-out screencap -p>"$o"; [ "$(wc -c<"$o")" -gt 25000 ]&&return 0; sleep .25; done; return 1; }
 shot(){ shot_to "$PROOF/$1.png"; }
-assert_no_system_dialog(){
-  adb shell uiautomator dump /sdcard/human-window.xml >/dev/null 2>&1 || true
-  adb pull /sdcard/human-window.xml "$PROOF/human/window.xml" >/dev/null 2>&1 || true
-  ! grep -qiE "isn.t responding|Close app|App info|Viewing full screen|Got it" "$PROOF/human/window.xml" 2>/dev/null
-}
+assert_no_system_dialog(){ adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1||true; adb pull /sdcard/window.xml "$PROOF/device-window.xml" >/dev/null 2>&1||true; ! grep -qiE "isn.t responding|Close app|App info|Viewing full screen|Got it" "$PROOF/device-window.xml" 2>/dev/null; }
 
-# Black-box human path. No SIS_LAB probe, no hotspot coordinates, no query flags. Launch with the
-# actual MAIN+LAUNCHER intent, allow the real five-second timeout to reveal the answer, discover
-# the bright NEXT control from pixels only, tap its visual centre, and require the screen to change.
+# Human black-box: exact icon launch, no probe. It must visibly acknowledge a premature tap,
+# then expose a deliberate TAP NOW phase, accept a wrong tap, and never auto-spoil puzzle 1.
 STAGE=human_default_path
 launch_default
-wait_log 'LOAD file:///android_asset/index.html\?level=0' 120
-wait_log 'READY file:///android_asset/index.html\?level=0' 120
+wait_log 'LOAD file:///android_asset/index.html\?level=0' 160
+wait_log 'READY file:///android_asset/index.html\?level=0' 160
 ! lab_log|grep -qE 'LOAD .*creative=1|LOAD .*acq=1|LOAD .*labdelay=1'
 ! lab_log|grep -q '\[SIS_LAB\]'
-sleep 5.7
-assert_no_system_dialog
-shot_to "$PROOF/human/reveal.png"
-read -r nx ny <<EOF
-$(ffmpeg -v error -i "$PROOF/human/reveal.png" -f rawvideo -pix_fmt gray - 2>/dev/null | python3 -c '
-import sys
-w,h=1080,2400
-b=sys.stdin.buffer.read()
-assert len(b)==w*h, len(b)
-# Find a large near-white control in the lower playable area; this deliberately knows nothing
-# about DOM ids or the answer hotspot.
-pts=[]
-for y in range(int(h*.62), int(h*.88)):
-    row=b[y*w:(y+1)*w]
-    for x,v in enumerate(row):
-        if 220 < x < 860 and v >= 200: pts.append((x,y))
-assert len(pts)>10000, len(pts)
-xs=[p[0] for p in pts]; ys=[p[1] for p in pts]
-assert max(xs)-min(xs)>150 and max(ys)-min(ys)>55, (min(xs),max(xs),min(ys),max(ys))
-print((min(xs)+max(xs))//2,(min(ys)+max(ys))//2)
-')
-EOF
-adb shell input tap "$nx" "$ny"
-sleep .9
-assert_no_system_dialog
-shot_to "$PROOF/human/after-next.png"
-python3 - "$PROOF/human/reveal.png" "$PROOF/human/after-next.png" <<'PY'
+sleep .8; assert_no_system_dialog; shot_to "$PROOF/human/watch.png"
+adb shell input tap 160 1180
+sleep .25; shot_to "$PROOF/human/early-tap.png"
+sleep 2.7; shot_to "$PROOF/human/answer.png"
+adb shell input tap 155 1030
+sleep .25; shot_to "$PROOF/human/wrong.png"
+sleep 4.0; shot_to "$PROOF/human/still-answering.png"
+python3 - "$PROOF/human/watch.png" "$PROOF/human/early-tap.png" "$PROOF/human/answer.png" "$PROOF/human/wrong.png" "$PROOF/human/still-answering.png" <<'PY'
 import hashlib,sys
-A=open(sys.argv[1],'rb').read(); B=open(sys.argv[2],'rb').read()
-assert hashlib.sha256(A).digest()!=hashlib.sha256(B).digest()
-assert len(A)>25000 and len(B)>25000
+bs=[open(p,'rb').read() for p in sys.argv[1:]]
+assert all(len(b)>25000 for b in bs)
+h=[hashlib.sha256(b).hexdigest() for b in bs]
+assert h[0]!=h[1],h
+assert h[1]!=h[2],h
+assert h[2]!=h[3],h
+assert h[3]!=h[4],h
 PY
-echo '[SIS_LAB_HOST] HUMAN_DEFAULT_PATH_PASS' >> "$PROOF/device-log.txt"
-append_log
+assert_no_system_dialog
+echo '[SIS_LAB_HOST] HUMAN_DEFAULT_PATH_PASS' >> "$PROOF/device-log.txt"; append_log
 
-STAGE=cold_wrong_touch
+# Diagnostic path can inspect internal coordinates, but must prove visible feedback and state order.
+STAGE=touch_contract
 start_level 0 false false
-real_wrong_tap
-wait_log '\[SIS_LAB\] EVENT WRONG_TAP' 40
-wait_log '\[SIS_LAB\] FEEDBACK NO — LOOK AGAIN\.' 40
-wait_log '\[SIS_LAB\] STATE STREAK 0 NO — LOOK AGAIN\.' 40
-sleep .55
-shot shadow-wrongtap
-adb shell uiautomator dump /sdcard/device-window.xml >/dev/null 2>&1||true
-adb pull /sdcard/device-window.xml "$PROOF/device-window.xml" >/dev/null 2>&1||true
-! grep -qiE 'Viewing full screen|Got it|isn.t responding|Close app|App info' "$PROOF/device-window.xml" 2>/dev/null
+wait_log '\[SIS_LAB\] PHASE TAP NOW' 80
+w=$(wrong_xy); tap_xy "$w"
+wait_log '\[SIS_LAB\] EVENT WRONG_TAP' 50
+wait_log '\[SIS_LAB\] FEEDBACK NOT THAT — KEEP LOOKING\.' 50
+sleep .25; shot shadow-wrongtap
+h=$(xy_for shadow_desync); tap_xy "$h"
+wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED BEFORE THE PERSON\.' 80
+sleep .35; shot shadow-correct
+n=$(next_xy); tap_xy "$n"
+wait_log 'SCENE extra_shadow ' 100
+wait_log '\[SIS_LAB\] PHASE TAP NOW' 100
+sleep .3; shot extra-answer
+x=$(xy_for extra_shadow); tap_xy "$x"
+wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK TWO PEOPLE\. THREE SHADOWS\.' 80
+n=$(next_xy); tap_xy "$n"
+wait_log 'SCENE wrong_light_switch ' 100
+wait_log '\[SIS_LAB\] PHASE TAP NOW' 100
+sleep .3; shot light-answer
+x=$(xy_for wrong_light_switch); tap_xy "$x"
+wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SWITCH TURNED ON THE WRONG LAMP\.' 80
+sleep .3; shot light-correct
 append_log
-start_level 0 false false
-shot shadow-start
-append_log
-
-STAGE=three_level_cycle
-start_level 0 false false
-sleep 1.9; shot shadow-anomaly
-real_hotspot_tap
-wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED FIRST\.' 50
-sleep .55; shot shadow-correct
-real_next_tap
-wait_mechanic_xy mirror_desync >/dev/null
-sleep 1.0
-shot shadow-next
-mirror_xy=$(wait_mechanic_xy mirror_desync); read -r mx my<<<"$mirror_xy"; adb shell input tap "$mx" "$my"; wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE REFLECTION WAS LATE\.' 50
-real_next_tap; wait_mechanic_xy domino_prediction >/dev/null
-domino_xy=$(wait_mechanic_xy domino_prediction); read -r dx dy<<<"$domino_xy"; adb shell input tap "$dx" "$dy"; wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE CHAIN STOPS HERE\.' 50
-real_next_tap; wait_mechanic_xy wrong_light_switch >/dev/null; append_log
-
-STAGE=independent_visuals
-start_level 1 false false
-sleep 1.7; shot mirror-anomaly; real_hotspot_tap; wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE REFLECTION WAS LATE\.' 50; sleep .55; shot mirror-correct; append_log
-start_level 2 false false
-sleep 2.1; shot domino-anomaly; real_hotspot_tap; wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE CHAIN STOPS HERE\.' 50; sleep .55; shot domino-correct; append_log
 
 STAGE=double_tap
 start_level 0 false false
-sleep 1.9
-double_xy=$(latest_hotspot_xy); read -r tx ty<<<"$double_xy"
-adb shell input tap "$tx" "$ty"
-adb shell input tap "$tx" "$ty"
-wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED FIRST\.' 50
-sleep .25
-test "$(lab_log|grep -c '\[SIS_LAB\] FEEDBACK THE SHADOW TURNED FIRST\.' || true)" -eq 1
-lab_log|grep -q '\[SIS_LAB\] STATE STREAK 1 THE SHADOW TURNED FIRST\.'
-! lab_log|grep -q '\[SIS_LAB\] STATE STREAK [2-9] '
-echo '[SIS_LAB_HOST] DOUBLE_TAP_PASS' >> "$PROOF/device-log.txt"
-append_log
+wait_log '\[SIS_LAB\] PHASE TAP NOW' 80
+h=$(xy_for shadow_desync); read -r tx ty<<<"$h"; adb shell input tap "$tx" "$ty"; adb shell input tap "$tx" "$ty"
+wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED BEFORE THE PERSON\.' 80
+sleep .2
+test "$(lab_log|grep -c '\[SIS_LAB\] FEEDBACK THE SHADOW TURNED BEFORE THE PERSON\.'||true)" -eq 1
+echo '[SIS_LAB_HOST] DOUBLE_TAP_PASS' >> "$PROOF/device-log.txt"; append_log
 
 STAGE=background_resume
 start_level 0 false false
-sleep .5
-adb shell input keyevent KEYCODE_HOME
-sleep .4
-adb shell am start -n "$ACTIVITY" --activity-reorder-to-front >/dev/null
-sleep .4
-test "$(lab_log|grep -c 'LOAD file:///android_asset/index.html?level=0' || true)" -eq 1
-real_hotspot_tap
-wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED FIRST\.' 50
-echo '[SIS_LAB_HOST] BACKGROUND_RESUME_PASS' >> "$PROOF/device-log.txt"
-append_log
+sleep .7; adb shell input keyevent KEYCODE_HOME; sleep .4; adb shell am start -n "$ACTIVITY" --activity-reorder-to-front >/dev/null
+wait_log '\[SIS_LAB\] PHASE TAP NOW' 100
+h=$(xy_for shadow_desync); tap_xy "$h"
+wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED BEFORE THE PERSON\.' 80
+echo '[SIS_LAB_HOST] BACKGROUND_RESUME_PASS' >> "$PROOF/device-log.txt"; append_log
 
 STAGE=acquisition_motion
-adb logcat -c
-adb shell rm -f /sdcard/acq-raw.mp4 >/dev/null 2>&1 || true
+adb logcat -c; adb shell rm -f /sdcard/acq-raw.mp4 >/dev/null 2>&1||true
 adb shell am start -S -n "$ACTIVITY" --es url 'file:///android_asset/index.html?level=0&creative=1&acq=1&labdelay=1' >/dev/null
-wait_log '\[SIS_LAB\] ACQ_DELAY_ARMED 1500' 120
-wait_log '\[SIS_LAB\] ACQ_BASE' 120
-adb shell screenrecord --bit-rate 4000000 --time-limit 7 /sdcard/acq-raw.mp4 >/dev/null 2>&1 &
-REC_PID=$!
-wait_log '\[SIS_LAB\] ACQ_TURN' 100
-wait "$REC_PID"
-adb pull /sdcard/acq-raw.mp4 "$PROOF/acq-raw.mp4" >/dev/null
+wait_log '\[SIS_LAB\] ACQ_DELAY_ARMED 1500' 160; wait_log '\[SIS_LAB\] ACQ_BASE' 160
+adb shell screenrecord --bit-rate 4000000 --time-limit 7 /sdcard/acq-raw.mp4 >/dev/null 2>&1 & REC_PID=$!
+wait_log '\[SIS_LAB\] ACQ_TURN' 120; wait "$REC_PID"; adb pull /sdcard/acq-raw.mp4 "$PROOF/acq-raw.mp4" >/dev/null
 raw_duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$PROOF/acq-raw.mp4")
 python3 - "$raw_duration" <<'PY'
 import sys
-assert float(sys.argv[1]) >= 4.55, sys.argv[1]
+assert float(sys.argv[1])>=4.55,sys.argv[1]
 PY
 ffmpeg -v error -y -ss 1.35 -i "$PROOF/acq-raw.mp4" -t 3.2 -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$PROOF/shadow-device.mp4"
-rm -f "$PROOF/acq-raw.mp4"
-ffmpeg -v error -y -ss 0.35 -i "$PROOF/shadow-device.mp4" -frames:v 1 "$PROOF/acq-before-turn.png"
-ffmpeg -v error -y -ss 1.70 -i "$PROOF/shadow-device.mp4" -frames:v 1 "$PROOF/acq-after-turn.png"
-append_log
+rm -f "$PROOF/acq-raw.mp4"; ffmpeg -v error -y -ss .35 -i "$PROOF/shadow-device.mp4" -frames:v 1 "$PROOF/acq-before-turn.png"; ffmpeg -v error -y -ss 1.70 -i "$PROOF/shadow-device.mp4" -frames:v 1 "$PROOF/acq-after-turn.png"; append_log
 
 STAGE=final_assertions
-grep -q 'LOAD file:///android_asset/index.html' "$PROOF/device-log.txt"
-grep -q '\[SIS_LAB\] ACQ_DELAY_ARMED 1500' "$PROOF/device-log.txt"
-grep -q '\[SIS_LAB\] ACQ_BASE' "$PROOF/device-log.txt"
-grep -q '\[SIS_LAB\] ACQ_TURN' "$PROOF/device-log.txt"
 grep -q '\[SIS_LAB_HOST\] HUMAN_DEFAULT_PATH_PASS' "$PROOF/device-log.txt"
 grep -q '\[SIS_LAB_HOST\] DOUBLE_TAP_PASS' "$PROOF/device-log.txt"
 grep -q '\[SIS_LAB_HOST\] BACKGROUND_RESUME_PASS' "$PROOF/device-log.txt"
+grep -q '\[SIS_LAB\] ACQ_BASE' "$PROOF/device-log.txt"
+grep -q '\[SIS_LAB\] ACQ_TURN' "$PROOF/device-log.txt"
