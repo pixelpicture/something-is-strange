@@ -8,9 +8,9 @@ window.SIS_LEVELS = [
   },
   {
     id: "wrong-light-switch", title: "Wrong Light Switch", mechanic: "wrong_light_switch",
-    intro: "WATCH WHAT THE SWITCH DOES.", question: "TAP THE LAMP THAT SHOULD NOT BE ON.",
+    intro: "WATCH THE WALL SWITCH.", question: "TAP THE LAMP THE SWITCH TURNED ON.",
     anomalyMs: 1500, hotspot: { x: 60, y: 19, w: 34, h: 36 }, focusId: "rightLamp",
-    revealText: "THE SWITCH TURNED ON THE WRONG LAMP.",
+    revealText: "THE WALL SWITCH TURNED ON THE WRONG LAMP.",
     telemetry: { family: "causality", variant: "switch_wrong_target" }
   },
   {
