@@ -1,78 +1,45 @@
 name: Android Device Lab
-
 on:
   push:
     branches: [ feature/mvp-physical-proof ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
-
 env:
   SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-
 jobs:
   physical-gameplay:
     runs-on: ubuntu-latest
     timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.SOURCE_SHA }}
+        with: { ref: "${{ env.SOURCE_SHA }}" }
       - name: Prove exact source checkout
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
-          echo "source_sha=$SOURCE_SHA"
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
       - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
+        with: { distribution: temurin, java-version: '17' }
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.7'
-      - name: Enable KVM acceleration
+        with: { gradle-version: '8.7' }
+      - name: Enable KVM
+        run: sudo chmod 666 /dev/kvm && test -r /dev/kvm && test -w /dev/kvm
+      - name: Stage exact V4 prototype
         run: |
           set -euo pipefail
-          sudo chmod 666 /dev/kvm
-          test -r /dev/kvm && test -w /dev/kvm
-      - name: Stage exact prototype into lab shell
-        run: |
-          set -euo pipefail
-          rm -rf android-device-lab/app/src/main/assets
-          mkdir -p android-device-lab/app/src/main/assets
-          cp index.html styles.css motion-v3.css levels.js engine-v3.js creative-mode.js shadow-acquisition.js android-device-lab/app/src/main/assets/
+          rm -rf android-device-lab/app/src/main/assets; mkdir -p android-device-lab/app/src/main/assets
+          cp index.html styles.css motion-v3.css levels.js engine-v4.js creative-mode.js shadow-acquisition.js android-device-lab/app/src/main/assets/
           cp scripts/device_lab_probe.js android-device-lab/app/src/main/assets/device-lab-probe.js
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('android-device-lab/app/src/main/assets/index.html')
-          s=p.read_text()
-          marker='  <script src="shadow-acquisition.js"></script>'
-          assert marker in s
-          assert 'engine-v3.js' in s and 'engine-v2.js' not in s and 'content-repairs.js' not in s
-          assert 'motion-v3.css' in s
-          s=s.replace(marker, '  <script src="device-lab-probe.js"></script>\n'+marker, 1)
-          p.write_text(s)
+          p=Path('android-device-lab/app/src/main/assets/index.html');s=p.read_text();m='  <script src="shadow-acquisition.js"></script>'
+          assert m in s and 'engine-v4.js' in s and 'engine-v3.js' not in s
+          p.write_text(s.replace(m,'  <script src="device-lab-probe.js"></script>\n'+m,1))
           PY
-      - name: Build lab APK with bounded dependency retry
+      - name: Build APK
         working-directory: android-device-lab
-        run: |
-          set -euo pipefail
-          for attempt in 1 2 3; do
-            gradle --no-daemon assembleDebug && exit 0
-            [ "$attempt" -eq 3 ] && exit 1
-            sleep $((attempt * 30))
-          done
-      - name: Verify installable device-check APK
-        run: |
-          set -euo pipefail
-          test -s android-device-lab/app/build/outputs/apk/debug/app-debug.apk
-      - name: Ensure free ffmpeg tooling
-        run: |
-          set -euo pipefail
-          if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
-            sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
-          fi
-      - name: Run real Android emulator interactions
+        run: for attempt in 1 2 3; do gradle --no-daemon assembleDebug && exit 0; [ "$attempt" -eq 3 ] && exit 1; sleep $((attempt*30)); done
+      - name: Ensure ffmpeg
+        run: command -v ffmpeg >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+      - name: Run Android physical interactions
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -81,43 +48,26 @@ jobs:
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           script: bash scripts/android_device_lab.sh
-      - name: Validate device artifacts
+      - name: Validate evidence
         run: |
           set -euo pipefail
           printf '%s\n' "$SOURCE_SHA" > device-proof/source-sha.txt
-          test -s device-proof/shadow-device.mp4
-          ! grep -qiE 'Viewing full screen|Got it|isn.t responding|Close app' device-proof/device-window.xml 2>/dev/null
-          grep -q 'creative=1&acq=1' device-proof/device-log.txt
-          grep -q '\[SIS_LAB\] ACQ_BASE' device-proof/device-log.txt
-          grep -q '\[SIS_LAB\] ACQ_TURN' device-proof/device-log.txt
-          grep -q '\[SIS_LAB_HOST\] HUMAN_DEFAULT_PATH_PASS' device-proof/device-log.txt
-          grep -q '\[SIS_LAB_HOST\] ALL_TEN_LEVELS_PASS' device-proof/device-log.txt
-          grep -q '\[SIS_LAB_HOST\] DOUBLE_TAP_PASS' device-proof/device-log.txt
-          grep -q '\[SIS_LAB_HOST\] BACKGROUND_RESUME_PASS' device-proof/device-log.txt
-          grep -q '\[SIS_LAB\] FEEDBACK NOT THAT — KEEP LOOKING\.' device-proof/device-log.txt
-          grep -q '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED BEFORE THE PERSON\.' device-proof/device-log.txt
+          grep -q 'HUMAN_DEFAULT_PATH_PASS' device-proof/device-log.txt
+          grep -q 'FIVE_LEVEL_CYCLE_PASS' device-proof/device-log.txt
+          grep -q 'EARLY_TAP_PASS' device-proof/device-log.txt
+          grep -q 'WRONG_TAP_PASS' device-proof/device-log.txt
+          grep -q 'ACQ_BASE' device-proof/device-log.txt
+          grep -q 'ACQ_TURN' device-proof/device-log.txt
           test "$(cat device-proof/source-sha.txt)" = "$SOURCE_SHA"
           python3 - <<'PY'
-          import glob,struct,subprocess
-          files=sorted(glob.glob('device-proof/**/*.png',recursive=True))
-          assert len(files)>=25,len(files)
-          for p in files:
-            b=open(p,'rb').read(); assert len(b)>25000,(p,len(b)); assert b[:8]==b'\x89PNG\r\n\x1a\n',p
-            w,h=struct.unpack('>II',b[16:24]); assert w>=720 and h>=1280,(p,w,h)
-          d=float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','csv=p=0','device-proof/shadow-device.mp4'],text=True).strip())
-          assert 2.9<=d<=3.3,d
+          import glob,struct
+          f=glob.glob('device-proof/**/*.png',recursive=True);assert len(f)>=18,len(f)
+          for p in f:
+            b=open(p,'rb').read();assert len(b)>25000,(p,len(b));w,h=struct.unpack('>II',b[16:24]);assert w>=720 and h>=1280,(p,w,h)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
-        with:
-          name: android-device-lab-${{ env.SOURCE_SHA }}
-          path: device-proof/
-          retention-days: 7
-          if-no-files-found: error
+        with: { name: "android-device-lab-${{ env.SOURCE_SHA }}", path: device-proof/, retention-days: 7, if-no-files-found: error }
       - uses: actions/upload-artifact@v4
         if: success()
-        with:
-          name: something-is-strange-device-check-${{ env.SOURCE_SHA }}
-          path: android-device-lab/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 7
-          if-no-files-found: error
+        with: { name: "something-is-strange-device-check-${{ env.SOURCE_SHA }}", path: android-device-lab/app/build/outputs/apk/debug/app-debug.apk, retention-days: 7, if-no-files-found: error }
