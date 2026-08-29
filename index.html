@@ -9,30 +9,24 @@
 </head>
 <body>
   <main class="shell">
-    <header class="hud">
-      <div class="brand">SOMETHING IS STRANGE</div>
-      <div class="streak" id="streak">PUZZLE 1</div>
-    </header>
+    <header class="hud"><div class="brand">SOMETHING IS STRANGE</div><div class="streak" id="streak">PUZZLE 1 / 5</div></header>
     <section class="card" aria-live="polite">
-      <div class="phase" id="phase">WATCH</div>
-      <div class="prompt" id="prompt">WATCH CAREFULLY.</div>
+      <div class="phase" id="phase">SPOT IT</div>
+      <div class="prompt" id="prompt">SPOT THE IMPOSSIBLE. TAP IT.</div>
       <div class="timer" id="timer" hidden>—</div>
       <div class="scene-wrap" id="sceneWrap">
-        <svg id="scene" viewBox="0 0 360 520" role="img" aria-label="Puzzle scene"></svg>
-        <button id="hotspot" class="hotspot" aria-label="Tap the strange part"></button>
+        <svg id="scene" viewBox="0 0 360 520" role="img" aria-label="Animated puzzle scene"></svg>
+        <button id="hotspot" class="hotspot" aria-label="Tap the impossible part"></button>
         <div class="tap-layer" id="tapLayer" aria-hidden="true"></div>
         <div class="tap-echo" id="tapEcho" aria-hidden="true"></div>
       </div>
       <div class="feedback" id="feedback"></div>
-      <div class="actions">
-        <button id="replayBtn" class="secondary" hidden>WATCH AGAIN ↻</button>
-        <button id="nextBtn" class="next" hidden>NEXT PUZZLE →</button>
-      </div>
+      <div class="actions"><button id="replayBtn" class="secondary" hidden>WATCH AGAIN ↻</button><button id="nextBtn" class="next" hidden>NEXT PUZZLE →</button></div>
     </section>
-    <footer class="footer">WATCH first. Then tap the strange part. Every tap gives feedback.</footer>
+    <footer class="footer">Something impossible will happen. Tap it when you see it.</footer>
   </main>
   <script src="levels.js"></script>
-  <script src="engine-v3.js"></script>
+  <script src="engine-v4.js"></script>
   <script src="creative-mode.js"></script>
   <script src="shadow-acquisition.js"></script>
 </body>
