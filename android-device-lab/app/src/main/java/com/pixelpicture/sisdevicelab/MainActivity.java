@@ -39,7 +39,9 @@ public class MainActivity extends Activity {
         }
         String url = intent.getStringExtra("url");
         if (url == null || url.isEmpty()) {
-            return "file:///android_asset/index.html?creative=1&level=0&acq=1";
+            // A human installing the APK must land in the real playable UI, never in the
+            // acquisition capture mode. Lab capture modes are opt-in through intent extras.
+            return "file:///android_asset/index.html?level=0";
         }
         // The only explicit-url launch in this lab is the acquisition capture. adb shell can
         // consume ampersand-separated query tails despite host quoting, so restore the lab-only
