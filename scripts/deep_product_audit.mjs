@@ -13,6 +13,7 @@ const C = read('styles.css');
 const M = read('motion-v3.css');
 const A = read('android-device-lab/app/src/main/java/com/pixelpicture/sisdevicelab/MainActivity.java');
 const P = read('scripts/device_lab_probe.js');
+const D = read('scripts/android_device_lab.sh');
 const req = (ok, message) => { if (!ok) throw new Error(message); };
 
 const profiles = [
@@ -75,7 +76,11 @@ for (const l of L) {
   const body = E.slice(start, end > start ? end : start + 5000);
   req((body.match(/later\(/g) || []).length >= beats[l.mechanic], `${l.id} animation beats`);
 }
-req(E.includes("q('walker').style.transform='translateX(58px)'"), 'shadow person moves');
+req(E.includes("move('walker','translateX(58px)')"), 'shadow person moves');
 req(E.includes("attr('shadow','d'"), 'shadow independently turns');
+req(E.includes("const acquisitionMode=params.get('creative')==='1'&&params.get('acq')==='1'"), 'explicit acquisition isolation');
+req(E.includes('if(!acquisitionMode){prompt.textContent=l.question;replayBtn.hidden=false}'), 'acquisition owns prompt timing');
+req(D.includes("! lab|grep -q 'Uncaught'"), 'Android proof rejects runtime exceptions');
+req(D.includes('PROMPT WATCH HIS SHADOW'), 'Android proof guards acquisition copy ownership');
 
-console.log(`PASS: ${n}/100 adversarial V4 perception proxies, ${arch.length}/30 architecture invariants, 5/5 bounded animation audits.`);
+console.log(`PASS: ${n}/100 adversarial V4 perception proxies, ${arch.length}/30 architecture invariants, 5/5 bounded animation audits, acquisition isolation guarded.`);
