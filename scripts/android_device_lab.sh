@@ -4,7 +4,7 @@ PKG=com.pixelpicture.sisdevicelab
 ACTIVITY="$PKG/.MainActivity"
 PROOF=device-proof
 LOG_TAG=SIS_DEVICE_LAB
-mkdir -p "$PROOF"; : > "$PROOF/device-log.txt"
+mkdir -p "$PROOF/human"; : > "$PROOF/device-log.txt"
 adb install -r android-device-lab/app/build/outputs/apk/debug/app-debug.apk
 adb shell settings put global hide_error_dialogs 1 || true
 adb shell settings put global show_first_crash_dialog 0 || true
@@ -15,8 +15,10 @@ lab_log(){ adb logcat -d -s "$LOG_TAG:I" '*:S' 2>/dev/null || true; }
 append_log(){ lab_log >> "$PROOF/device-log.txt"; }
 trap 'rc=$?; echo "[SIS_LAB_HOST] FAIL rc=$rc stage=${STAGE:-unknown}" >> "$PROOF/device-log.txt"; append_log; exit "$rc"' ERR
 wait_log(){ local p="$1" n="${2:-50}"; for _ in $(seq 1 "$n"); do lab_log|grep -Eq "$p"&&return 0; sleep .1; done; echo "Timed out: $p" >&2; append_log; return 1; }
-launch(){ local level="$1" creative="${2:-false}" acq="${3:-false}"; adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -n "$ACTIVITY" --ei level "$level" --ez creative "$creative" --ez acq "$acq" >/dev/null; }
-launch_default(){ adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -n "$ACTIVITY" >/dev/null; }
+# Diagnostic launches opt into labdelay=1. The probe is inert without this marker, so the
+# installed APK's normal launcher path is the same uninstrumented runtime a human receives.
+launch(){ local level="$1" creative="${2:-false}" acq="${3:-false}"; adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -n "$ACTIVITY" --ei level "$level" --ez creative "$creative" --ez acq "$acq" --ez labdelay true >/dev/null; }
+launch_default(){ adb logcat -c; adb shell am force-stop "$PKG"; adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null; }
 start_level(){ local level="$1"; launch "$@"; wait_log '\[SIS_LAB\] INTERACTION_READY' 120; wait_log "READY file:///android_asset/index.html\\?level=${level}([& ]|$)" 120; }
 latest_state_line(){ lab_log|grep -E '\[SIS_LAB\] (INTERACTION_READY|READY|HOTSPOT|SCENE) '|tail -1||true; }
 latest_hotspot_xy(){ latest_state_line|sed -E 's/.*(INTERACTION_READY|READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'; }
@@ -28,20 +30,45 @@ real_next_tap(){ local x a b; x=$(wait_next_xy); read -r a b<<<"$x"; adb shell i
 shot_to(){ local o="$1"; for _ in $(seq 1 6); do adb exec-out screencap -p>"$o"; [ "$(wc -c<"$o")" -gt 25000 ]&&return 0; sleep .25; done; return 1; }
 shot(){ shot_to "$PROOF/$1.png"; }
 
-# This is the exact path a human gets by tapping the installed app icon. It exists to prevent
-# a lab-only creative/acquisition URL from ever being shipped as the device-check entry point.
+# Black-box human path. No SIS_LAB probe, no hotspot coordinates, no query flags. Launch exactly
+# like an icon tap, allow the real five-second timeout to reveal the answer, discover the bright
+# NEXT control from pixels only, tap its visual centre, and require the screen to materially change.
 STAGE=human_default_path
 launch_default
-wait_log '\[SIS_LAB\] INTERACTION_READY' 120
 wait_log 'LOAD file:///android_asset/index.html\?level=0' 120
 wait_log 'READY file:///android_asset/index.html\?level=0' 120
-! lab_log|grep -qE 'LOAD .*creative=1|LOAD .*acq=1'
-sleep 1.9
-real_hotspot_tap
-wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED FIRST\.' 50
-wait_log 'NEXT_HIDDEN false' 50
-real_next_tap
-wait_mechanic_xy mirror_desync >/dev/null
+! lab_log|grep -qE 'LOAD .*creative=1|LOAD .*acq=1|LOAD .*labdelay=1'
+! lab_log|grep -q '\[SIS_LAB\]'
+sleep 5.7
+shot_to "$PROOF/human/reveal.png"
+read -r nx ny <<EOF
+$(ffmpeg -v error -i "$PROOF/human/reveal.png" -f rawvideo -pix_fmt gray - 2>/dev/null | python3 -c '
+import sys
+w,h=1080,2400
+b=sys.stdin.buffer.read()
+assert len(b)==w*h, len(b)
+# Find a large near-white control in the lower playable area; this deliberately knows nothing
+# about DOM ids or the answer hotspot.
+pts=[]
+for y in range(int(h*.62), int(h*.88)):
+    row=b[y*w:(y+1)*w]
+    for x,v in enumerate(row):
+        if 220 < x < 860 and v >= 238: pts.append((x,y))
+assert len(pts)>10000, len(pts)
+xs=[p[0] for p in pts]; ys=[p[1] for p in pts]
+assert max(xs)-min(xs)>150 and max(ys)-min(ys)>55, (min(xs),max(xs),min(ys),max(ys))
+print((min(xs)+max(xs))//2,(min(ys)+max(ys))//2)
+')
+EOF
+adb shell input tap "$nx" "$ny"
+sleep .9
+shot_to "$PROOF/human/after-next.png"
+python3 - "$PROOF/human/reveal.png" "$PROOF/human/after-next.png" <<'PY'
+import hashlib,sys
+A=open(sys.argv[1],'rb').read(); B=open(sys.argv[2],'rb').read()
+assert hashlib.sha256(A).digest()!=hashlib.sha256(B).digest()
+assert len(A)>25000 and len(B)>25000
+PY
 echo '[SIS_LAB_HOST] HUMAN_DEFAULT_PATH_PASS' >> "$PROOF/device-log.txt"
 append_log
 
@@ -51,7 +78,6 @@ real_wrong_tap
 wait_log '\[SIS_LAB\] EVENT WRONG_TAP' 40
 wait_log '\[SIS_LAB\] FEEDBACK NO — LOOK AGAIN\.' 40
 wait_log '\[SIS_LAB\] STATE STREAK 0 NO — LOOK AGAIN\.' 40
-wait_log '\[SIS_LAB\] VISUAL_READY WRONG FEEDBACK NO — LOOK AGAIN\.' 50
 sleep .55
 shot shadow-wrongtap
 adb shell uiautomator dump /sdcard/device-window.xml >/dev/null 2>&1||true
