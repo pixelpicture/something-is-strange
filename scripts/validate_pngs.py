@@ -1,11 +1,11 @@
-import hashlib, pathlib, struct, sys, zlib
+import pathlib, struct, sys, zlib
 
 root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'proof')
 bases = [
-    'shadow','mirror','domino','light-switch','color-theft',
-    'occlusion','reverse-splash','door-two-rooms','haircut-mirror','extra-shadow'
+    'shadow','extra-shadow','light-switch','reverse-splash','color-theft',
+    'door-two-rooms','late-mirror','haircut-mirror','wrong-occlusion','domino-break'
 ]
-required = {f'{base}-{state}.png' for base in bases for state in ('normal','wrong','reveal')}
+required = {f'{base}-{state}.png' for base in bases for state in ('watch','answer','reveal')}
 files = sorted(root.glob('*.png'))
 if {p.name for p in files} != required:
     missing = sorted(required - {p.name for p in files})
@@ -43,12 +43,13 @@ def decode_png(path):
         rows.append(out); prev=out
     return rows
 
-def scene_change(a,b):
+def change_ratio(a,b,y0=60,y1=850,x0=12,x1=400):
     ra,rb=decode_png(a),decode_png(b)
-    changed=0; total=0
-    for y in range(114,624):
-        for x in range(30,382):
-            i=x*3; d=(abs(ra[y][i]-rb[y][i])+abs(ra[y][i+1]-rb[y][i+1])+abs(ra[y][i+2]-rb[y][i+2]))/3
+    changed=total=0
+    for y in range(y0,y1):
+        for x in range(x0,x1):
+            i=x*3
+            d=(abs(ra[y][i]-rb[y][i])+abs(ra[y][i+1]-rb[y][i+1])+abs(ra[y][i+2]-rb[y][i+2]))/3
             total += 1
             if d > 8: changed += 1
     return changed/total
@@ -57,10 +58,11 @@ for path in files:
     if len(path.read_bytes()) < 10_000: raise SystemExit(f'{path}: suspiciously small')
 
 for base in bases:
-    normal=root/f'{base}-normal.png'; wrong=root/f'{base}-wrong.png'; reveal=root/f'{base}-reveal.png'
-    anomaly_ratio=scene_change(normal,wrong); reveal_ratio=scene_change(wrong,reveal)
-    if anomaly_ratio < 0.001: raise SystemExit(f'{base}: anomaly visually static ({anomaly_ratio:.5f})')
-    if reveal_ratio < 0.001: raise SystemExit(f'{base}: reveal visually static ({reveal_ratio:.5f})')
-    print(f'PASS {base}: anomaly_change={anomaly_ratio:.4f}, reveal_change={reveal_ratio:.4f}')
+    watch=root/f'{base}-watch.png'; answer=root/f'{base}-answer.png'; reveal=root/f'{base}-reveal.png'
+    answer_ratio=change_ratio(watch,answer)
+    reveal_ratio=change_ratio(answer,reveal)
+    if answer_ratio < 0.002: raise SystemExit(f'{base}: WATCH→TAP NOW visually static ({answer_ratio:.5f})')
+    if reveal_ratio < 0.004: raise SystemExit(f'{base}: answer→reveal visually static ({reveal_ratio:.5f})')
+    print(f'PASS {base}: watch_to_answer={answer_ratio:.4f}, answer_to_reveal={reveal_ratio:.4f}')
 
-print('PASS: 30 phone frames, all 10 levels show measurable anomaly and reveal changes.')
+print('PASS: 30 V3 phone frames; all 10 levels visibly transition WATCH → TAP NOW → reveal.')
