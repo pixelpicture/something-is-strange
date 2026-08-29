@@ -21,38 +21,24 @@ jobs:
       - name: Serve prototype
         run: |
           python3 -m http.server 8000 >/tmp/sis-http.log 2>&1 &
-          for i in {1..20}; do
-            curl -fsS http://127.0.0.1:8000/ >/dev/null && exit 0
-            sleep 0.2
-          done
-          cat /tmp/sis-http.log
-          exit 1
-      - name: Capture 10-level phone proof
+          for i in {1..20}; do curl -fsS http://127.0.0.1:8000/ >/dev/null && exit 0; sleep 0.2; done
+          cat /tmp/sis-http.log; exit 1
+      - name: Capture V3 watch answer reveal proof
         run: |
           set -euo pipefail
           mkdir -p proof
-          capture() {
-            name="$1"; url="$2"; budget="$3"
-            "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars \
-              --window-size=412,915 --virtual-time-budget="$budget" \
-              --screenshot="proof/${name}.png" "$url"
-          }
-          shotset() {
-            base="$1"; level="$2"; wrong_at="$3"; reveal_budget="$4"
-            capture "${base}-normal" "http://127.0.0.1:8000/?level=${level}" 300
-            capture "${base}-wrong" "http://127.0.0.1:8000/?level=${level}" "$wrong_at"
-            capture "${base}-reveal" "http://127.0.0.1:8000/?level=${level}&revealAt=${wrong_at}" "$reveal_budget"
-          }
-          shotset shadow 0 2900 3400
-          shotset mirror 1 1900 2400
-          shotset domino 2 2400 2900
-          shotset light-switch 3 1800 2300
-          shotset color-theft 4 2200 2700
-          shotset occlusion 5 2500 3000
-          shotset reverse-splash 6 2100 2600
-          shotset door-two-rooms 7 3300 3900
-          shotset haircut-mirror 8 2300 2800
-          shotset extra-shadow 9 2300 2800
+          capture(){ name="$1"; url="$2"; budget="$3"; "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=412,915 --virtual-time-budget="$budget" --screenshot="proof/${name}.png" "$url"; }
+          shotset(){ base="$1"; level="$2"; observe="$3"; capture "${base}-watch" "http://127.0.0.1:8000/?level=${level}" 500; capture "${base}-answer" "http://127.0.0.1:8000/?level=${level}" $((observe+350)); capture "${base}-reveal" "http://127.0.0.1:8000/?level=${level}&revealAt=$((observe+250))" $((observe+850)); }
+          shotset shadow 0 3300
+          shotset extra-shadow 1 2800
+          shotset light-switch 2 2700
+          shotset reverse-splash 3 3600
+          shotset color-theft 4 3100
+          shotset door-two-rooms 5 3900
+          shotset late-mirror 6 3400
+          shotset haircut-mirror 7 3100
+          shotset wrong-occlusion 8 3400
+          shotset domino-break 9 3900
       - name: Validate 30 phone frames
         run: python3 scripts/validate_pngs.py proof
       - uses: actions/upload-artifact@v4
