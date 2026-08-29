@@ -15,6 +15,7 @@ lab_log(){ adb logcat -d -s "$LOG_TAG:I" '*:S' 2>/dev/null || true; }
 append_log(){ lab_log >> "$PROOF/device-log.txt"; }
 trap 'rc=$?; echo "[SIS_LAB_HOST] FAIL rc=$rc stage=${STAGE:-unknown}" >> "$PROOF/device-log.txt"; append_log; exit "$rc"' ERR
 wait_log(){ local p="$1" n="${2:-80}"; for _ in $(seq 1 "$n"); do lab_log|grep -Eq "$p"&&return 0; sleep .1; done; echo "Timed out: $p" >&2; append_log; return 1; }
+wait_mech(){ local m="$1" n="${2:-120}"; wait_log "\\[SIS_LAB\\] (INTERACTION_READY|READY|HOTSPOT|SCENE|PHASE_STATE) ${m} " "$n"; }
 launch(){ local level="$1" creative="${2:-false}" acq="${3:-false}"; adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -n "$ACTIVITY" --ei level "$level" --ez creative "$creative" --ez acq "$acq" --ez labdelay true >/dev/null; }
 launch_default(){ adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n "$ACTIVITY" >/dev/null; }
 start_level(){ local level="$1"; launch "$@"; wait_log '\[SIS_LAB\] INTERACTION_READY' 160; wait_log "READY file:///android_asset/index.html\\?level=${level}([& ]|$)" 160; }
@@ -27,8 +28,6 @@ shot_to(){ local o="$1"; for _ in $(seq 1 6); do adb exec-out screencap -p>"$o";
 shot(){ shot_to "$PROOF/$1.png"; }
 assert_no_system_dialog(){ adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1||true; adb pull /sdcard/window.xml "$PROOF/device-window.xml" >/dev/null 2>&1||true; ! grep -qiE "isn.t responding|Close app|App info|Viewing full screen|Got it" "$PROOF/device-window.xml" 2>/dev/null; }
 
-# Human black-box: exact icon launch, no probe. It must visibly acknowledge a premature tap,
-# then expose a deliberate TAP NOW phase, accept a wrong tap, and never auto-spoil puzzle 1.
 STAGE=human_default_path
 launch_default
 wait_log 'LOAD file:///android_asset/index.html\?level=0' 160
@@ -55,7 +54,6 @@ PY
 assert_no_system_dialog
 echo '[SIS_LAB_HOST] HUMAN_DEFAULT_PATH_PASS' >> "$PROOF/device-log.txt"; append_log
 
-# Diagnostic path can inspect internal coordinates, but must prove visible feedback and state order.
 STAGE=touch_contract
 start_level 0 false false
 wait_log '\[SIS_LAB\] PHASE TAP NOW' 80
@@ -67,14 +65,16 @@ h=$(xy_for shadow_desync); tap_xy "$h"
 wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED BEFORE THE PERSON\.' 80
 sleep .35; shot shadow-correct
 n=$(next_xy); tap_xy "$n"
-wait_log 'SCENE extra_shadow ' 100
-wait_log '\[SIS_LAB\] PHASE TAP NOW' 100
+wait_log '\[SIS_LAB\] EVENT NEXT_TAP' 50
+wait_mech extra_shadow 120
+wait_log '\[SIS_LAB\] PHASE_STATE extra_shadow .* PHASE TAP NOW .* PROGRESS PUZZLE 2 / 10' 120
 sleep .3; shot extra-answer
 x=$(xy_for extra_shadow); tap_xy "$x"
 wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK TWO PEOPLE\. THREE SHADOWS\.' 80
 n=$(next_xy); tap_xy "$n"
-wait_log 'SCENE wrong_light_switch ' 100
-wait_log '\[SIS_LAB\] PHASE TAP NOW' 100
+wait_log '\[SIS_LAB\] EVENT NEXT_TAP' 50
+wait_mech wrong_light_switch 120
+wait_log '\[SIS_LAB\] PHASE_STATE wrong_light_switch .* PHASE TAP NOW .* PROGRESS PUZZLE 3 / 10' 120
 sleep .3; shot light-answer
 x=$(xy_for wrong_light_switch); tap_xy "$x"
 wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SWITCH TURNED ON THE WRONG LAMP\.' 80
