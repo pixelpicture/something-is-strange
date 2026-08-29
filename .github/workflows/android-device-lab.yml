@@ -40,7 +40,7 @@ jobs:
           set -euo pipefail
           rm -rf android-device-lab/app/src/main/assets
           mkdir -p android-device-lab/app/src/main/assets
-          cp index.html styles.css levels.js engine-v3.js creative-mode.js shadow-acquisition.js android-device-lab/app/src/main/assets/
+          cp index.html styles.css motion-v3.css levels.js engine-v3.js creative-mode.js shadow-acquisition.js android-device-lab/app/src/main/assets/
           cp scripts/device_lab_probe.js android-device-lab/app/src/main/assets/device-lab-probe.js
           python3 - <<'PY'
           from pathlib import Path
@@ -49,6 +49,7 @@ jobs:
           marker='  <script src="shadow-acquisition.js"></script>'
           assert marker in s
           assert 'engine-v3.js' in s and 'engine-v2.js' not in s and 'content-repairs.js' not in s
+          assert 'motion-v3.css' in s
           s=s.replace(marker, '  <script src="device-lab-probe.js"></script>\n'+marker, 1)
           p.write_text(s)
           PY
@@ -90,6 +91,7 @@ jobs:
           grep -q '\[SIS_LAB\] ACQ_BASE' device-proof/device-log.txt
           grep -q '\[SIS_LAB\] ACQ_TURN' device-proof/device-log.txt
           grep -q '\[SIS_LAB_HOST\] HUMAN_DEFAULT_PATH_PASS' device-proof/device-log.txt
+          grep -q '\[SIS_LAB_HOST\] ALL_TEN_LEVELS_PASS' device-proof/device-log.txt
           grep -q '\[SIS_LAB_HOST\] DOUBLE_TAP_PASS' device-proof/device-log.txt
           grep -q '\[SIS_LAB_HOST\] BACKGROUND_RESUME_PASS' device-proof/device-log.txt
           grep -q '\[SIS_LAB\] FEEDBACK NOT THAT — KEEP LOOKING\.' device-proof/device-log.txt
@@ -98,12 +100,12 @@ jobs:
           python3 - <<'PY'
           import glob,struct,subprocess
           files=sorted(glob.glob('device-proof/**/*.png',recursive=True))
-          assert len(files)>=8,len(files)
+          assert len(files)>=25,len(files)
           for p in files:
             b=open(p,'rb').read(); assert len(b)>25000,(p,len(b)); assert b[:8]==b'\x89PNG\r\n\x1a\n',p
             w,h=struct.unpack('>II',b[16:24]); assert w>=720 and h>=1280,(p,w,h)
           d=float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','csv=p=0','device-proof/shadow-device.mp4'],text=True).strip())
-          assert 2.9<=d<=3.4,d
+          assert 2.9<=d<=3.3,d
           PY
       - uses: actions/upload-artifact@v4
         if: always()
