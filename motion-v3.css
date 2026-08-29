@@ -1,0 +1,19 @@
+.entity{
+  transition:
+    opacity 280ms ease-out,
+    fill 280ms ease-out,
+    transform 480ms cubic-bezier(.22,.72,.24,1),
+    cx 360ms cubic-bezier(.22,.72,.24,1),
+    cy 360ms cubic-bezier(.22,.72,.24,1),
+    x 360ms cubic-bezier(.22,.72,.24,1),
+    y 360ms cubic-bezier(.22,.72,.24,1);
+}
+#rightGlow,#thirdShadow{transition:opacity 420ms ease-out}
+#rightBulb,#vase{transition:fill 360ms ease-out}
+#ball,#ballLeft,#ballRight,#catBody,#tail{transition-duration:420ms}
+#mirrorFace,#mirrorHair{transition-duration:380ms}
+.scene-wrap{contain:layout paint style}
+@media (prefers-reduced-motion:reduce){
+  .entity,.walker-motion{transition-duration:1ms!important;animation-duration:1ms!important}
+  .hotspot.reveal{animation:none!important}
+}
