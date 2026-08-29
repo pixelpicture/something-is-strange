@@ -7,12 +7,22 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
 jobs:
   physical-gameplay:
     runs-on: ubuntu-latest
     timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Prove exact source checkout
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          echo "source_sha=$SOURCE_SHA"
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -73,6 +83,7 @@ jobs:
       - name: Validate device artifacts
         run: |
           set -euo pipefail
+          printf '%s\n' "$SOURCE_SHA" > device-proof/source-sha.txt
           test -s device-proof/shadow-device.mp4
           ! grep -qiE 'Viewing full screen|Got it|isn.t responding|Close app' device-proof/device-window.xml 2>/dev/null
           grep -q 'creative=1&acq=1' device-proof/device-log.txt
@@ -83,8 +94,9 @@ jobs:
           grep -q '\[SIS_LAB_HOST\] BACKGROUND_RESUME_PASS' device-proof/device-log.txt
           grep -q '\[SIS_LAB\] FEEDBACK NOT THAT — KEEP LOOKING\.' device-proof/device-log.txt
           grep -q '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED BEFORE THE PERSON\.' device-proof/device-log.txt
+          test "$(cat device-proof/source-sha.txt)" = "$SOURCE_SHA"
           python3 - <<'PY'
-          import glob,hashlib,struct,subprocess
+          import glob,struct,subprocess
           files=sorted(glob.glob('device-proof/**/*.png',recursive=True))
           assert len(files)>=8,len(files)
           for p in files:
@@ -96,14 +108,14 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: android-device-lab-${{ github.sha }}
+          name: android-device-lab-${{ env.SOURCE_SHA }}
           path: device-proof/
           retention-days: 7
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: something-is-strange-device-check-${{ github.sha }}
+          name: something-is-strange-device-check-${{ env.SOURCE_SHA }}
           path: android-device-lab/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
           if-no-files-found: error
