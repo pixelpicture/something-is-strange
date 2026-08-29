@@ -32,10 +32,10 @@ jobs:
           shotset shadow 0 3300
           shotset extra-shadow 1 2800
           shotset light-switch 2 2700
-          shotset reverse-splash 3 3600
+          shotset reverse-splash 3 2500
           shotset color-theft 4 3100
           shotset door-two-rooms 5 3900
-          shotset late-mirror 6 3400
+          shotset wrong-mirror 6 2500
           shotset haircut-mirror 7 3100
           shotset wrong-occlusion 8 3400
           shotset domino-break 9 3900
