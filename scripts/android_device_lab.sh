@@ -16,6 +16,7 @@ append_log(){ lab_log >> "$PROOF/device-log.txt"; }
 trap 'rc=$?; echo "[SIS_LAB_HOST] FAIL rc=$rc stage=${STAGE:-unknown}" >> "$PROOF/device-log.txt"; append_log; exit "$rc"' ERR
 wait_log(){ local p="$1" n="${2:-50}"; for _ in $(seq 1 "$n"); do lab_log|grep -Eq "$p"&&return 0; sleep .1; done; echo "Timed out: $p" >&2; append_log; return 1; }
 launch(){ local level="$1" creative="${2:-false}" acq="${3:-false}"; adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -n "$ACTIVITY" --ei level "$level" --ez creative "$creative" --ez acq "$acq" >/dev/null; }
+launch_default(){ adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -n "$ACTIVITY" >/dev/null; }
 start_level(){ local level="$1"; launch "$@"; wait_log '\[SIS_LAB\] INTERACTION_READY' 120; wait_log "READY file:///android_asset/index.html\\?level=${level}([& ]|$)" 120; }
 latest_state_line(){ lab_log|grep -E '\[SIS_LAB\] (INTERACTION_READY|READY|HOTSPOT|SCENE) '|tail -1||true; }
 latest_hotspot_xy(){ latest_state_line|sed -E 's/.*(INTERACTION_READY|READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'; }
@@ -26,6 +27,23 @@ real_wrong_tap(){ local l x a b; l=$(latest_state_line); echo "$l"|grep -q 'WRON
 real_next_tap(){ local x a b; x=$(wait_next_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
 shot_to(){ local o="$1"; for _ in $(seq 1 6); do adb exec-out screencap -p>"$o"; [ "$(wc -c<"$o")" -gt 25000 ]&&return 0; sleep .25; done; return 1; }
 shot(){ shot_to "$PROOF/$1.png"; }
+
+# This is the exact path a human gets by tapping the installed app icon. It exists to prevent
+# a lab-only creative/acquisition URL from ever being shipped as the device-check entry point.
+STAGE=human_default_path
+launch_default
+wait_log '\[SIS_LAB\] INTERACTION_READY' 120
+wait_log 'LOAD file:///android_asset/index.html\?level=0' 120
+wait_log 'READY file:///android_asset/index.html\?level=0' 120
+! lab_log|grep -qE 'LOAD .*creative=1|LOAD .*acq=1'
+sleep 1.9
+real_hotspot_tap
+wait_log '\[SIS_LAB\] VISUAL_READY CORRECT FEEDBACK THE SHADOW TURNED FIRST\.' 50
+wait_log 'NEXT_HIDDEN false' 50
+real_next_tap
+wait_mechanic_xy mirror_desync >/dev/null
+echo '[SIS_LAB_HOST] HUMAN_DEFAULT_PATH_PASS' >> "$PROOF/device-log.txt"
+append_log
 
 STAGE=cold_wrong_touch
 start_level 0 false false
@@ -119,5 +137,6 @@ grep -q 'LOAD file:///android_asset/index.html' "$PROOF/device-log.txt"
 grep -q '\[SIS_LAB\] ACQ_DELAY_ARMED 1500' "$PROOF/device-log.txt"
 grep -q '\[SIS_LAB\] ACQ_BASE' "$PROOF/device-log.txt"
 grep -q '\[SIS_LAB\] ACQ_TURN' "$PROOF/device-log.txt"
+grep -q '\[SIS_LAB_HOST\] HUMAN_DEFAULT_PATH_PASS' "$PROOF/device-log.txt"
 grep -q '\[SIS_LAB_HOST\] DOUBLE_TAP_PASS' "$PROOF/device-log.txt"
 grep -q '\[SIS_LAB_HOST\] BACKGROUND_RESUME_PASS' "$PROOF/device-log.txt"
