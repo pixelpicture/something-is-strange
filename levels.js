@@ -24,12 +24,12 @@ window.SIS_LEVELS = [
     telemetry: { family: "causality", variant: "switch_wrong_target" }
   },
   {
-    id: "reverse-splash", title: "Reverse Splash", mechanic: "reverse_splash",
-    intro: "WATCH THE BALL FALL TOWARD THE WATER.", question: "TAP WHAT HAPPENED BEFORE IT SHOULD.",
-    observeMs: 3600, answerMs: 12000,
+    id: "reverse-splash", title: "Early Splash", mechanic: "reverse_splash",
+    intro: "WATCH THE BALL FALL TOWARD THE WATER.", question: "TAP THE SPLASH WHILE THE BALL IS STILL ABOVE IT.",
+    observeMs: 2500, answerMs: 14000,
     hotspot: { x: 27, y: 54, w: 46, h: 29 }, focusId: "splash",
-    revealText: "THE SPLASH HAPPENED BEFORE IMPACT.",
-    telemetry: { family: "temporal_physics", variant: "effect_before_cause" }
+    revealText: "THE WATER SPLASHED BEFORE THE BALL HIT IT.",
+    telemetry: { family: "temporal_physics", variant: "visible_effect_before_contact" }
   },
   {
     id: "color-theft", title: "Color Theft", mechanic: "color_theft",
@@ -42,18 +42,18 @@ window.SIS_LEVELS = [
   {
     id: "door-two-rooms", title: "Door Two Rooms", mechanic: "door_two_rooms",
     intro: "WATCH THE SAME DOOR OPEN TWICE.", question: "TAP THE DOOR THAT CHANGED WHERE IT LEADS.",
-    observeMs: 3900, answerMs: 12000,
+    observeMs: 3900, answerMs: 14000,
     hotspot: { x: 25, y: 15, w: 50, h: 63 }, focusId: "coldRoom",
     revealText: "THE SAME DOOR OPENED TO TWO DIFFERENT PLACES.",
     telemetry: { family: "spatial_logic", variant: "door_incompatible_rooms" }
   },
   {
-    id: "late-mirror", title: "Late Mirror", mechanic: "mirror_desync",
-    intro: "WATCH THE FACE AND ITS REFLECTION.", question: "TAP THE REFLECTION THAT MOVED LATE.",
-    observeMs: 3400, answerMs: 14000,
+    id: "wrong-mirror", title: "Wrong Mirror", mechanic: "mirror_desync",
+    intro: "WATCH WHERE THE PERSON AND REFLECTION LOOK.", question: "TAP THE REFLECTION LOOKING THE WRONG WAY.",
+    observeMs: 2500, answerMs: 14000,
     hotspot: { x: 54, y: 20, w: 36, h: 40 }, focusId: "mirrorFace",
-    revealText: "THE REFLECTION COPIED THE TURN TOO LATE.",
-    telemetry: { family: "temporal_anomaly", variant: "reflection_lag" }
+    revealText: "THE REFLECTION LOOKED THE OPPOSITE WAY.",
+    telemetry: { family: "reflection_logic", variant: "opposite_gaze" }
   },
   {
     id: "haircut-mirror", title: "Haircut Mirror", mechanic: "haircut_mirror",
