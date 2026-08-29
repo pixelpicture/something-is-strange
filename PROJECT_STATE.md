@@ -8,130 +8,101 @@ First physical candidate: **Something Is Strange**.
 Broad GOLD MINE search remains frozen until this BET is physically validated or killed. TikTok Mini Games access remains treated as solved through ODDLINGS unless new evidence appears.
 
 ## Budget rule
-Buy information, not architecture. Prefer zero-dependency/browser-native implementation, free CI, deterministic SVG, no backend, no paid assets, no ad SDK, and no AI API in the prototype unless a cheaper path cannot answer the active gate.
+Buy information, not architecture. Prefer zero-dependency/browser-native implementation, free CI, deterministic scene assets, no backend, no paid assets, no ad SDK, and no AI API unless it materially improves the active evidence gate.
 
-## Product reconstruction V4
-The previous real-phone failures invalidated the old assumption that a technically working hotspot game was enough. V4 therefore changed the core loop and cut content instead of adding more explanation.
-
+## Core product architecture
 Primary loop:
 `continuous scene -> normal expectation -> impossible event -> tap -> immediate spatial feedback -> reveal/replay/next`
 
-Key V4 decisions:
-- no countdown in the physical comprehension slice;
-- taps accepted throughout the scene;
-- early tap visibly acknowledges interaction without revealing the answer;
-- wrong tap gives immediate local feedback;
-- correct tap freezes/highlights the exact anomaly and exposes NEXT;
-- acquisition creative owns its own copy/timing and cannot be overwritten by playable-state prompts;
-- first physical slice cut from 10 levels to 5 high-salience anomalies.
+The previous phase-led/timer-heavy design was rejected by real-phone evidence. The current 5-level comprehension slice intentionally has no countdown and accepts taps throughout.
 
-Canonical 5-level physical slice:
+Canonical slice:
 1. Extra Shadow
 2. Wrong Light Switch
 3. Shadow Ahead
 4. Early Splash
 5. Color Theft
 
-Haircut Mirror and Wrong Occlusion are rejected from the next physical comprehension build. Domino Break, Door Two Rooms, and Wrong Mirror remain R&D inventory only until they independently earn phone-size readability.
+Haircut Mirror and Wrong Occlusion remain rejected. Domino Break, Door Two Rooms, and Wrong Mirror remain R&D inventory only.
 
-See `PRODUCT_RECONSTRUCTION_V4.md` for the adversarial reconstruction rationale.
+## Physical-phone result after V4 automated PASS
+The first independent user phone test after automated V4 PASS produced a **visual/product HOLD**, not a release PASS.
 
-## Authoritative V4 pre-phone PASS
-Validated source HEAD: `fdefe26162f8638e15b72eb26f65f02d39a34cb3`.
+Observed by the user:
+- picture quality was very weak;
+- in Wrong Light Switch, the object below the unlit lamp was not immediately recognizable;
+- pacing felt roughly okay, with no strong evidence yet that timing itself was the current blocker.
 
-All five workflows on this exact source HEAD completed SUCCESS:
-- Cheap MVP Gate #331, run `33233338697`: SUCCESS
-- Creative 9x16 Proof #282, run `33233338608`: SUCCESS
-- Shadow Acquisition Frame Proof #262, run `33233338603`: SUCCESS
-- Phone Visual Proof #320, run `33233338613`: SUCCESS
-- Android Device Lab #204, run `33233338592`: SUCCESS
+Interpretation:
+- weak art is **not** the intended mechanic;
+- the game must not require decoding what ordinary objects are before detecting the anomaly;
+- current pacing is frozen provisionally while visual readability is repaired;
+- green CI remains insufficient evidence of product quality.
 
-Android artifacts on the same source HEAD:
-- device-lab artifact id `9709193337`
-- name `android-device-lab-fdefe26162f8638e15b72eb26f65f02d39a34cb3`
-- size `2,148,052` bytes
-- digest `sha256:acf3be2d71bcffa0205132479f2834a8b405c94554ee523f6ebc0c005d4dbafc`
-- APK artifact id `9709193478`
-- name `something-is-strange-device-check-fdefe26162f8638e15b72eb26f65f02d39a34cb3`
-- size `19,831` bytes
-- digest `sha256:f3a370280daf2be46bf596fb931cd2e0720bdbc54654e63746e8aafac2449e9e`
+## Visual-language recovery V5
+Goal: recognizable scene in ~1 second, impossible event in ~2 seconds, confident tap target by ~3 seconds, without explanation text doing the perceptual work.
 
-Locally extracted APK SHA256 from that artifact:
-`0ca23b184a2e602e7a13d8f963f7fa910f8c234adbcdb6832e1b74169e5ceb14`
+Changes now in source:
+- all five puzzles upgraded from bare geometric diagrams toward a coherent illustrated/stylized scene language;
+- Extra Shadow now reads as a night park with streetlamp, bench, path, two people and physically grounded shadows;
+- Wrong Light Switch now has two clear lamps, a large conventional wall-switch plate, visible conduit/relationship cue, and stronger wrong-lamp glow;
+- Shadow Ahead now reads as an actual sidewalk/corner scene with a walking person and grounded perspective;
+- Early Splash now reads as a backyard swimming-pool scene rather than a blue rectangle;
+- Color Theft now reads as a tabletop/interior still life with a recognizable vase and ball;
+- switch copy changed to `WATCH THE WALL SWITCH.` and `TAP THE LAMP THE SWITCH TURNED ON.`;
+- anomaly timing itself was not accelerated or slowed as part of this repair.
 
-## Machine / architecture evidence
-Cheap gate on the authoritative V4 HEAD proves:
-- V4 continuous 5-level slice structurally valid;
-- 100/100 adversarial perception proxies pass;
-- 30/30 architecture invariants pass;
-- 5/5 bounded animation audits pass;
-- acquisition isolation is explicitly guarded.
+Current visual-recovery source HEAD before this state-only commit:
+`53513f8b32219b120f24079111453f9f91d75ff9`
 
-## Android black-box / interaction evidence
-API35 Pixel 6 emulator, exact source checkout, KVM, staged exact V4 runtime, physical `adb shell input tap`:
-- clean launcher path with no creative/lab query contamination: PASS
-- no lab instrumentation on default launcher path: PASS
-- first puzzle has no countdown: PASS
-- early physical tap produces visible response: PASS
-- wrong physical tap produces visible response and preserves unsolved state: PASS
-- five-level physical cycle: PASS
-- correct tap produces exact spatial reveal and visible NEXT: PASS
-- all five levels solve through the real Android WebView path: PASS
-- acquisition baseline/turn survives Android WebView: PASS
-- acquisition prompt remains `WATCH HIS SHADOW.` after the anomaly: PASS
-- Android proof rejects any `Uncaught` runtime exception: PASS
-- fresh authoritative device log contains no `Uncaught`: PASS
-- source-sha artifact exactly equals `fdefe26162f8638e15b72eb26f65f02d39a34cb3`: PASS
+All five workflows on that exact visual source HEAD completed SUCCESS:
+- Cheap MVP Gate #339 — SUCCESS
+- Creative 9x16 Proof #290 — SUCCESS
+- Phone Visual Proof #328 — SUCCESS
+- Shadow Acquisition Frame Proof #270 — SUCCESS
+- Android Device Lab #212 — SUCCESS
 
-## Human semantic artifact review
-Fresh Android artifact from run #204 was manually reviewed after CI success.
+Fresh Android device log on that HEAD:
+- HUMAN_DEFAULT_PATH_PASS
+- EARLY_TAP_PASS
+- WRONG_TAP_PASS
+- FIVE_LEVEL_CYCLE_PASS
+- ACQUISITION_OWNERSHIP_PASS
+- no `Uncaught` runtime exception
+- exact source SHA `53513f8b32219b120f24079111453f9f91d75ff9`
 
-Default / first puzzle:
-- cold portrait frame is clean, readable, no black/loading/system overlay: PASS
-- Extra Shadow anomaly is visually obvious at phone size: PASS
-- early-tap ripple is visible: PASS
-- wrong-tap state remains intact: PASS
-- correct reveal highlights the exact extra shadow, explanation is concise, NEXT is unmistakable: PASS
+Artifacts:
+- Android device-lab artifact id `9722853583`, digest `sha256:254f745589ae2c7039ef6e3f593606483eb1a5b75e512b0956384e0bc214d7e6`
+- APK artifact id `9722853761`, digest `sha256:d3e02e789d14da7c2205e25dcbdd8b1e2ff5156d61952d62afc95f83f829341b`
 
-Remaining physical slice:
-- Wrong Light Switch: wrong lamp causality and correct focus highlight readable: PASS
-- Shadow Ahead: person/shadow composition and early-turn target readable: PASS for physical comprehension test
-- Early Splash: effect-before-contact is simultaneously visible in the anomaly frame: PASS for physical comprehension test
-- Color Theft: red vase + white exiting ball transformation readable: PASS
+## Human semantic review of V5 visual proof
+The new phone-size frames are materially clearer than the failed phone build:
+- the wall control is now immediately recognizable as a switch;
+- the lamp relationship and wrong-lamp event read without first deciphering an abstract symbol;
+- the park / sidewalk / pool / tabletop contexts are recognizable at phone size;
+- all five anomaly targets remain large and tappable;
+- pacing has not regressed.
 
-Acquisition semantic review:
-- before/after frames preserve `WATCH HIS SHADOW.`; playable prompt no longer overwrites creative copy: PASS
-- shadow acquisition scene no longer throws stale playable-timer exceptions: PASS
-- no black/loading/system UI contamination in required acquisition frames: PASS
-
-Visual quality remains prototype-grade geometric art. This is sufficient for the next **physical comprehension** gate, not evidence of final public/acquisition art quality across the whole game.
-
-**AUTOMATED PRE-PHONE GATE = PASS.**
+However, this remains a low-cost experimental visual tier, not final commercial art. It is intended to answer whether better scene legibility materially changes comprehension and interest before spending on richer art production.
 
 ## Current gates
-- V4 product reconstruction / bounded 5-level slice: PASS for physical testing
-- Cheap structural + 100 perception proxies + 30 architecture invariants: PASS
-- Browser/phone visual proof: PASS
-- Shadow acquisition proof: PASS
-- Android emulator physical interaction gate: PASS
-- Human semantic review of fresh Android artifact: PASS
-- Automated pre-phone gate: **PASS**
-- User physical Android phone comprehension gate: **NEXT REQUIRED GATE**
-- Blind Human Comprehension H1: BLOCKED until user phone PASS
+- Continuous-loop architecture: provisional PASS for testing
+- 5-level interaction semantics: PASS
+- Automated structural/device gates: PASS
+- V4 old visual execution: FAIL by real user evidence
+- V5 visual readability recovery: PASS internally / NEEDS USER COMPARISON
+- Final commercial art quality: NOT CLAIMED
+- User physical Android comprehension/interest gate: NEXT REQUIRED GATE
+- Blind Human Comprehension H1: BLOCKED until user phone result
 - Organic TikTok H2: BLOCKED until H1 PASS
 - Paid acquisition: BLOCKED
 - Backend / monetization / factory scale: BLOCKED
 
-## Next required gate — independent user phone test
-Install the APK built from exact HEAD `fdefe26162f8638e15b72eb26f65f02d39a34cb3` and play it without hints or explanation.
+## Next decision
+Do not tune speed yet unless the next physical test identifies a timing-specific failure.
 
-The test is not merely “does it run.” It must answer:
-- Is the first scene immediately understandable enough to watch?
-- Does every tap visibly do something?
-- Is the impossible event noticed without being coached?
-- Is the target obvious enough to tap?
-- Is the reveal satisfying/clear?
-- Is NEXT obvious?
-- Do the five puzzles feel like one coherent game rather than five test cases?
+Next phone test should compare the V5 build against the failed V4 experience and answer two separate questions:
+1. Is the scene/object language now immediately understandable?
+2. Even when understandable, is the anomaly hunt itself interesting enough to continue?
 
-A phone technical PASS with poor comprehension remains a product FAIL and must trigger another reconstruction rather than more instruction text.
+If comprehension improves but interest remains weak, stop spending on art and revisit/kill the core loop. If both improve, then invest in a stronger reusable production visual system rather than polishing these SVG scenes indefinitely.
