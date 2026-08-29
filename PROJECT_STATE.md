@@ -3,107 +3,135 @@
 ## Active BET
 TikTok-Native Game Experiment Factory.
 
-First physical candidate: **Something Is Strange** (dynamic impossible moments, not generic static find-the-difference).
+First physical candidate: **Something Is Strange**.
 
-Broad GOLD MINE search is frozen until this BET is physically validated or killed. TikTok Mini Games access is treated as solved through ODDLINGS unless new evidence appears.
+Broad GOLD MINE search remains frozen until this BET is physically validated or killed. TikTok Mini Games access remains treated as solved through ODDLINGS unless new evidence appears.
 
 ## Budget rule
-Buy information, not architecture. Prefer zero-dependency/browser-native implementation, free CI, deterministic SVG, no backend, no paid assets, no ad SDK, and no AI API in the prototype unless a cheaper path cannot answer the current gate.
+Buy information, not architecture. Prefer zero-dependency/browser-native implementation, free CI, deterministic SVG, no backend, no paid assets, no ad SDK, and no AI API in the prototype unless a cheaper path cannot answer the active gate.
 
-## Product hypothesis
-`normal -> expectation -> impossible event -> tap/reveal -> replay/next`.
+## Product reconstruction V4
+The previous real-phone failures invalidated the old assumption that a technically working hotspot game was enough. V4 therefore changed the core loop and cut content instead of adding more explanation.
 
-Creative should be nearly identical to gameplay. Dynamic temporal/causal anomalies are the differentiation; generic static anomaly clutter is not.
+Primary loop:
+`continuous scene -> normal expectation -> impossible event -> tap -> immediate spatial feedback -> reveal/replay/next`
 
-## Canonical MVP state
-Branch: `feature/mvp-physical-proof`
-PR: #1
+Key V4 decisions:
+- no countdown in the physical comprehension slice;
+- taps accepted throughout the scene;
+- early tap visibly acknowledges interaction without revealing the answer;
+- wrong tap gives immediate local feedback;
+- correct tap freezes/highlights the exact anomaly and exposes NEXT;
+- acquisition creative owns its own copy/timing and cannot be overwritten by playable-state prompts;
+- first physical slice cut from 10 levels to 5 high-salience anomalies.
 
-Retained 10-level MVP set:
-1. Shadow Ahead — creepy prediction — PASS
-2. Late Mirror — temporal anomaly — PASS
-3. Domino Break — prediction — PASS
-4. Wrong Light Switch — causality — PASS
-5. Color Theft — transformation — PASS
-6. Wrong Occlusion — depth/occlusion — PASS after repair
-7. Reverse Splash — effect before cause — PASS
-8. Door Two Rooms — spatial logic — PASS after repair
-9. Haircut Mirror — reflection causality — PASS
-10. Extra Shadow — creepy multiplicity — PASS
+Canonical 5-level physical slice:
+1. Extra Shadow
+2. Wrong Light Switch
+3. Shadow Ahead
+4. Early Splash
+5. Color Theft
 
-Verified internal gates before Android device validation:
-- Cheap technical MVP: PASS
-- 10-level mechanic visual proof: 10/10 PASS
-- Static 9:16 creative composition: 3/3 PASS
-- Deterministic browser video pipeline: PASS
-- Three mechanic videos: 3/3 PASS
-- Shadow acquisition A/B keyframe proof: PASS
-- Shadow acquisition final 3.4 s host video: PASS
-- Shadow acquisition creative internal quality gate: PASS for a cheap external/blind-human test
+Haircut Mirror and Wrong Occlusion are rejected from the next physical comprehension build. Domino Break, Door Two Rooms, and Wrong Mirror remain R&D inventory only until they independently earn phone-size readability.
 
-Rejected evidence paths remain rejected and must not be revived without a new reason: live X11 capture, repeated independent Chrome capture, CDP virtual-time capture, and other brittle/expensive paths that already failed to buy useful information.
+See `PRODUCT_RECONSTRUCTION_V4.md` for the adversarial reconstruction rationale.
 
-## Android Device Lab — authoritative PASS
-Validated source HEAD: `fa5190a9c1b0792309859f0b9415ea54e9d01eb7` (`Stabilize Android wrong-feedback and acquisition evidence`).
+## Authoritative V4 pre-phone PASS
+Validated source HEAD: `fdefe26162f8638e15b72eb26f65f02d39a34cb3`.
 
-All five workflows on that source HEAD completed SUCCESS:
-- Android Device Lab #104, run `33211658383`: SUCCESS
-- Cheap MVP Gate #231, run `33211658446`: SUCCESS
-- Phone Visual Proof #220, run `33211658484`: SUCCESS
-- Shadow Acquisition Frame Proof #162, run `33211658370`: SUCCESS
-- Creative 9x16 Proof #182, run `33211658368`: SUCCESS
+All five workflows on this exact source HEAD completed SUCCESS:
+- Cheap MVP Gate #331, run `33233338697`: SUCCESS
+- Creative 9x16 Proof #282, run `33233338608`: SUCCESS
+- Shadow Acquisition Frame Proof #262, run `33233338603`: SUCCESS
+- Phone Visual Proof #320, run `33233338613`: SUCCESS
+- Android Device Lab #204, run `33233338592`: SUCCESS
 
-Android artifact:
-- artifact id `9701918561`
-- name `android-device-lab-dcb23b9aff9c577646a9a19b8d72a3a893445e62`
-- size `3,107,627` bytes
-- digest `sha256:e0da11e54a9275321451964ed6d51a66fd38e6403293c6adfb7a7b9608c42f76`
-- expires 2026-09-04
+Android artifacts on the same source HEAD:
+- device-lab artifact id `9709193337`
+- name `android-device-lab-fdefe26162f8638e15b72eb26f65f02d39a34cb3`
+- size `2,148,052` bytes
+- digest `sha256:acf3be2d71bcffa0205132479f2834a8b405c94554ee523f6ebc0c005d4dbafc`
+- APK artifact id `9709193478`
+- name `something-is-strange-device-check-fdefe26162f8638e15b72eb26f65f02d39a34cb3`
+- size `19,831` bytes
+- digest `sha256:f3a370280daf2be46bf596fb931cd2e0720bdbc54654e63746e8aafac2449e9e`
 
-Physical/runtime evidence from API35 Pixel 6 x86_64 emulator with KVM and real `adb shell input tap`:
-- cold WebView load and interaction readiness: PASS
-- wrong physical tap routes to `tapLayer`: PASS
-- wrong tap gives `NO — LOOK AGAIN.` while streak stays 0: PASS
-- Shadow correct physical tap and reveal: PASS
-- physical NEXT advances to Late Mirror: PASS
-- Late Mirror correct physical tap/reveal: PASS
-- physical NEXT advances to Domino Break: PASS
-- Domino Break correct physical tap/reveal: PASS
-- three consecutive level cycle advances onward to Wrong Light Switch without broken state: PASS
-- double physical tap does not double-score: PASS
-- background/resume preserves a usable interaction path: PASS
-- acquisition WebView path loads with the intended query parameters: PASS
-- acquisition baseline and early-turn markers occur: PASS
-- device acquisition MP4 exists and is decodable at 1080x2400: PASS
+Locally extracted APK SHA256 from that artifact:
+`0ca23b184a2e602e7a13d8f963f7fa910f8c234adbcdb6832e1b74169e5ceb14`
 
-Human semantic review of the Android artifact (not just green CI):
-- `shadow-start.png`: clean portrait gameplay, no OS tutorial/system overlay: PASS
-- `shadow-anomaly.png`: Shadow anomaly visible: PASS
-- `shadow-wrongtap.png`: `NO — LOOK AGAIN.` visible and state intact: PASS
-- `shadow-correct.png`: correct reveal and NEXT visible: PASS
-- `shadow-next.png`: Late Mirror appears after NEXT with clean reset: PASS
-- `mirror-anomaly.png` / `mirror-correct.png`: mechanic and reveal readable: PASS
-- `domino-anomaly.png` / `domino-correct.png`: mechanic and reveal readable: PASS
-- `acq-before-turn.png` / `acq-after-turn.png`: acquisition scene survives Android WebView and the impossible shadow turn is visible: PASS
-- `device-window.xml`: only the app fullscreen WebView is present; no `Viewing full screen`, `Got it`, ANR, crash, action bar, or other blocking overlay: PASS
-- no black/blank screenshots in the required semantic set: PASS
+## Machine / architecture evidence
+Cheap gate on the authoritative V4 HEAD proves:
+- V4 continuous 5-level slice structurally valid;
+- 100/100 adversarial perception proxies pass;
+- 30/30 architecture invariants pass;
+- 5/5 bounded animation audits pass;
+- acquisition isolation is explicitly guarded.
 
-The device acquisition MP4 is evidence of WebView survival, not the canonical acquisition creative. It contains a lab capture transition/pre-roll artifact and therefore must not replace the already-passed deterministic host acquisition video for external creative testing. This does **not** invalidate the Android gameplay/device gate because the device criterion is that the acquisition anomaly survives the real WebView path, which the before/after frames and runtime markers establish.
+## Android black-box / interaction evidence
+API35 Pixel 6 emulator, exact source checkout, KVM, staged exact V4 runtime, physical `adb shell input tap`:
+- clean launcher path with no creative/lab query contamination: PASS
+- no lab instrumentation on default launcher path: PASS
+- first puzzle has no countdown: PASS
+- early physical tap produces visible response: PASS
+- wrong physical tap produces visible response and preserves unsolved state: PASS
+- five-level physical cycle: PASS
+- correct tap produces exact spatial reveal and visible NEXT: PASS
+- all five levels solve through the real Android WebView path: PASS
+- acquisition baseline/turn survives Android WebView: PASS
+- acquisition prompt remains `WATCH HIS SHADOW.` after the anomaly: PASS
+- Android proof rejects any `Uncaught` runtime exception: PASS
+- fresh authoritative device log contains no `Uncaught`: PASS
+- source-sha artifact exactly equals `fdefe26162f8638e15b72eb26f65f02d39a34cb3`: PASS
 
-**Android Device Gameplay / automated pre-phone gate = PASS.**
+## Human semantic artifact review
+Fresh Android artifact from run #204 was manually reviewed after CI success.
+
+Default / first puzzle:
+- cold portrait frame is clean, readable, no black/loading/system overlay: PASS
+- Extra Shadow anomaly is visually obvious at phone size: PASS
+- early-tap ripple is visible: PASS
+- wrong-tap state remains intact: PASS
+- correct reveal highlights the exact extra shadow, explanation is concise, NEXT is unmistakable: PASS
+
+Remaining physical slice:
+- Wrong Light Switch: wrong lamp causality and correct focus highlight readable: PASS
+- Shadow Ahead: person/shadow composition and early-turn target readable: PASS for physical comprehension test
+- Early Splash: effect-before-contact is simultaneously visible in the anomaly frame: PASS for physical comprehension test
+- Color Theft: red vase + white exiting ball transformation readable: PASS
+
+Acquisition semantic review:
+- before/after frames preserve `WATCH HIS SHADOW.`; playable prompt no longer overwrites creative copy: PASS
+- shadow acquisition scene no longer throws stale playable-timer exceptions: PASS
+- no black/loading/system UI contamination in required acquisition frames: PASS
+
+Visual quality remains prototype-grade geometric art. This is sufficient for the next **physical comprehension** gate, not evidence of final public/acquisition art quality across the whole game.
+
+**AUTOMATED PRE-PHONE GATE = PASS.**
 
 ## Current gates
-- Internal technical/mechanic/creative gates: PASS
-- Android emulator physical gameplay gate: PASS
-- User physical Android phone gate: NOT YET — next required gate
-- Blind Human Comprehension H1: NOT YET
-- Organic TikTok signal H2: NOT YET
-- Paid acquisition: BLOCKED until external signal
-- Backend / monetization / procedural factory scale: BLOCKED until external signal
+- V4 product reconstruction / bounded 5-level slice: PASS for physical testing
+- Cheap structural + 100 perception proxies + 30 architecture invariants: PASS
+- Browser/phone visual proof: PASS
+- Shadow acquisition proof: PASS
+- Android emulator physical interaction gate: PASS
+- Human semantic review of fresh Android artifact: PASS
+- Automated pre-phone gate: **PASS**
+- User physical Android phone comprehension gate: **NEXT REQUIRED GATE**
+- Blind Human Comprehension H1: BLOCKED until user phone PASS
+- Organic TikTok H2: BLOCKED until H1 PASS
+- Paid acquisition: BLOCKED
+- Backend / monetization / factory scale: BLOCKED
 
-## Next required gate — user physical Android
-Do not expand scope or polish all 10 levels now.
+## Next required gate — independent user phone test
+Install the APK built from exact HEAD `fdefe26162f8638e15b72eb26f65f02d39a34cb3` and play it without hints or explanation.
 
-Next step is an independent physical-phone check using the current lab APK/runtime on the user's Android device. Verify cold launch, portrait layout, tap responsiveness, wrong-tap feedback, correct reveal, NEXT progression across Shadow -> Mirror -> Domino, and absence of scroll/zoom/system-overlay interference.
+The test is not merely “does it run.” It must answer:
+- Is the first scene immediately understandable enough to watch?
+- Does every tap visibly do something?
+- Is the impossible event noticed without being coached?
+- Is the target obvious enough to tap?
+- Is the reveal satisfying/clear?
+- Is NEXT obvious?
+- Do the five puzzles feel like one coherent game rather than five test cases?
 
-Only after the physical-phone check passes should the project proceed to preregistered H1 blind-human comprehension, then H2 organic TikTok. No paid acquisition, backend, monetization SDK, AI content factory, or broad level-production expansion before those gates.
+A phone technical PASS with poor comprehension remains a product FAIL and must trigger another reconstruction rather than more instruction text.
