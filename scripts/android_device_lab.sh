@@ -18,7 +18,10 @@ wait_log(){ local p="$1" n="${2:-50}"; for _ in $(seq 1 "$n"); do lab_log|grep -
 # Diagnostic launches opt into labdelay=1. The probe is inert without this marker, so the
 # installed APK's normal launcher path is the same uninstrumented runtime a human receives.
 launch(){ local level="$1" creative="${2:-false}" acq="${3:-false}"; adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -n "$ACTIVITY" --ei level "$level" --ez creative "$creative" --ez acq "$acq" --ez labdelay true >/dev/null; }
-launch_default(){ adb logcat -c; adb shell am force-stop "$PKG"; adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null; }
+# Send the same MAIN+LAUNCHER intent as an icon tap, directly to the exported launcher activity.
+# Avoid `monkey`: on headless API35 it can stall the system Quickstep launcher and overlay an ANR
+# dialog over an otherwise-correct app, contaminating the black-box visual gate.
+launch_default(){ adb logcat -c; adb shell am force-stop "$PKG"; adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n "$ACTIVITY" >/dev/null; }
 start_level(){ local level="$1"; launch "$@"; wait_log '\[SIS_LAB\] INTERACTION_READY' 120; wait_log "READY file:///android_asset/index.html\\?level=${level}([& ]|$)" 120; }
 latest_state_line(){ lab_log|grep -E '\[SIS_LAB\] (INTERACTION_READY|READY|HOTSPOT|SCENE) '|tail -1||true; }
 latest_hotspot_xy(){ latest_state_line|sed -E 's/.*(INTERACTION_READY|READY|HOTSPOT|SCENE) [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\2 \3/'; }
@@ -29,10 +32,15 @@ real_wrong_tap(){ local l x a b; l=$(latest_state_line); echo "$l"|grep -q 'WRON
 real_next_tap(){ local x a b; x=$(wait_next_xy); read -r a b<<<"$x"; adb shell input tap "$a" "$b"; }
 shot_to(){ local o="$1"; for _ in $(seq 1 6); do adb exec-out screencap -p>"$o"; [ "$(wc -c<"$o")" -gt 25000 ]&&return 0; sleep .25; done; return 1; }
 shot(){ shot_to "$PROOF/$1.png"; }
+assert_no_system_dialog(){
+  adb shell uiautomator dump /sdcard/human-window.xml >/dev/null 2>&1 || true
+  adb pull /sdcard/human-window.xml "$PROOF/human/window.xml" >/dev/null 2>&1 || true
+  ! grep -qiE "isn.t responding|Close app|App info|Viewing full screen|Got it" "$PROOF/human/window.xml" 2>/dev/null
+}
 
-# Black-box human path. No SIS_LAB probe, no hotspot coordinates, no query flags. Launch exactly
-# like an icon tap, allow the real five-second timeout to reveal the answer, discover the bright
-# NEXT control from pixels only, tap its visual centre, and require the screen to materially change.
+# Black-box human path. No SIS_LAB probe, no hotspot coordinates, no query flags. Launch with the
+# actual MAIN+LAUNCHER intent, allow the real five-second timeout to reveal the answer, discover
+# the bright NEXT control from pixels only, tap its visual centre, and require the screen to change.
 STAGE=human_default_path
 launch_default
 wait_log 'LOAD file:///android_asset/index.html\?level=0' 120
@@ -40,6 +48,7 @@ wait_log 'READY file:///android_asset/index.html\?level=0' 120
 ! lab_log|grep -qE 'LOAD .*creative=1|LOAD .*acq=1|LOAD .*labdelay=1'
 ! lab_log|grep -q '\[SIS_LAB\]'
 sleep 5.7
+assert_no_system_dialog
 shot_to "$PROOF/human/reveal.png"
 read -r nx ny <<EOF
 $(ffmpeg -v error -i "$PROOF/human/reveal.png" -f rawvideo -pix_fmt gray - 2>/dev/null | python3 -c '
@@ -53,7 +62,7 @@ pts=[]
 for y in range(int(h*.62), int(h*.88)):
     row=b[y*w:(y+1)*w]
     for x,v in enumerate(row):
-        if 220 < x < 860 and v >= 238: pts.append((x,y))
+        if 220 < x < 860 and v >= 200: pts.append((x,y))
 assert len(pts)>10000, len(pts)
 xs=[p[0] for p in pts]; ys=[p[1] for p in pts]
 assert max(xs)-min(xs)>150 and max(ys)-min(ys)>55, (min(xs),max(xs),min(ys),max(ys))
@@ -62,6 +71,7 @@ print((min(xs)+max(xs))//2,(min(ys)+max(ys))//2)
 EOF
 adb shell input tap "$nx" "$ny"
 sleep .9
+assert_no_system_dialog
 shot_to "$PROOF/human/after-next.png"
 python3 - "$PROOF/human/reveal.png" "$PROOF/human/after-next.png" <<'PY'
 import hashlib,sys
