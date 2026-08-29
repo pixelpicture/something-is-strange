@@ -49,6 +49,10 @@ jobs:
             [ "$attempt" -eq 3 ] && exit 1
             sleep $((attempt * 30))
           done
+      - name: Verify installable device-check APK
+        run: |
+          set -euo pipefail
+          test -s android-device-lab/app/build/outputs/apk/debug/app-debug.apk
       - name: Ensure free ffmpeg tooling
         run: |
           set -euo pipefail
@@ -116,5 +120,12 @@ jobs:
         with:
           name: android-device-lab-${{ github.sha }}
           path: device-proof/
+          retention-days: 7
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: something-is-strange-device-check-${{ github.sha }}
+          path: android-device-lab/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
           if-no-files-found: error
