@@ -3,7 +3,7 @@ import pathlib, struct, sys
 root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'creative-proof')
 expected = {
     f'{base}-{phase}.png'
-    for base in ('shadow', 'mirror', 'domino')
+    for base in ('shadow', 'extra-shadow', 'light-switch')
     for phase in ('start', 'anomaly', 'reveal')
 }
 files = {p.name: p for p in root.glob('*.png')}
