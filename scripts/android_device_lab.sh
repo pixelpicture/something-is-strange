@@ -5,7 +5,8 @@ rm -rf "$PROOF";mkdir -p "$PROOF/human" "$PROOF/levels";:>"$PROOF/device-log.txt
 adb install -r android-device-lab/app/build/outputs/apk/debug/app-debug.apk
 adb shell settings put secure immersive_mode_confirmations confirmed||true
 lab(){ adb logcat -d -s "$LOG_TAG:I" '*:S' 2>/dev/null||true;};append(){ lab>>"$PROOF/device-log.txt";};trap 'rc=$?;echo "[SIS_LAB_HOST] FAIL rc=$rc stage=${STAGE:-unknown}">>"$PROOF/device-log.txt";append;exit $rc' ERR
-waitlog(){ for _ in $(seq 1 ${2:-120});do lab|grep -Eq "$1"&&return 0;sleep .1;done;echo "timeout $1";return 1;};shot(){ adb exec-out screencap -p>"$PROOF/$1.png";test "$(wc -c<"$PROOF/$1.png")" -gt 25000;}
+waitlog(){ for _ in $(seq 1 ${2:-120});do lab|grep -Eq "$1"&&return 0;sleep .1;done;echo "timeout $1";return 1;}
+shot(){ local f="$PROOF/$1.png";for _ in $(seq 1 12);do adb exec-out screencap -p>"$f";if [ "$(wc -c<"$f")" -gt 25000 ];then return 0;fi;sleep .2;done;echo "screenshot remained blank/small: $1 $(wc -c<"$f")";return 1;}
 launch(){ adb logcat -c;adb shell am force-stop "$PKG";adb shell am start -n "$ACTIVITY" --ei level "$1" --ez labdelay true >/dev/null;waitlog "READY file:///android_asset/index.html\\?level=$1" 160;}
 state(){ lab|grep '\[SIS_LAB\] INTERACTION_READY'|tail -1;};xy(){ local m="$1" line;for _ in $(seq 1 80);do line=$(lab|grep "\[SIS_LAB\] INTERACTION_READY $m "|tail -1||true);if [ -n "$line" ];then echo "$line"|sed -E 's/.* [a-z_]+ ([0-9]+) ([0-9]+) WRONG.*/\1 \2/';return;fi;sleep .1;done;return 1;};wrongxy(){ state|sed -E 's/.* WRONG ([0-9]+) ([0-9]+).* WRONG_TARGET.*/\1 \2/';};tap(){ read -r x y<<<"$1";adb shell input tap "$x" "$y";}
 STAGE=human_default_path
