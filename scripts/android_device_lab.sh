@@ -17,4 +17,5 @@ mechs=(extra_shadow wrong_light_switch shadow_desync reverse_splash color_theft)
 for i in 0 1 2 3 4;do launch "$i";sleep "${delays[$i]}";shot "levels/$i-anomaly";h=$(xy "${mechs[$i]}");tap "$h";waitlog '\[SIS_LAB\] VISUAL_READY CORRECT' 80;shot "levels/$i-correct";done
 echo '[SIS_LAB_HOST] FIVE_LEVEL_CYCLE_PASS'>>"$PROOF/device-log.txt";append
 STAGE=acquisition
-adb logcat -c;adb shell am force-stop "$PKG";adb shell am start -n "$ACTIVITY" --ei level 2 --ez creative true --ez acq true --ez labdelay true >/dev/null;waitlog 'creative=1&acq=1&labdelay=1' 160;waitlog '\[SIS_LAB\] ACQ_BASE' 160;sleep 1.0;shot acq-before;sleep 1.1;waitlog '\[SIS_LAB\] ACQ_TURN' 120;shot acq-after;append
+adb logcat -c;adb shell am force-stop "$PKG";adb shell am start -n "$ACTIVITY" --ei level 2 --ez creative true --ez acq true --ez labdelay true >/dev/null;waitlog 'creative=1&acq=1&labdelay=1' 160;waitlog '\[SIS_LAB\] ACQ_BASE' 160;sleep 1.0;shot acq-before;sleep 1.1;waitlog '\[SIS_LAB\] ACQ_TURN' 120;waitlog 'shadow_acquisition .*PROMPT WATCH HIS SHADOW\.' 120;! lab|grep -q 'Uncaught';shot acq-after;echo '[SIS_LAB_HOST] ACQUISITION_OWNERSHIP_PASS'>>"$PROOF/device-log.txt";append
+! grep -q 'Uncaught' "$PROOF/device-log.txt"
