@@ -15,7 +15,17 @@ export class ReferenceGameController extends Component {
 
   onEnable(){input.on(Input.EventType.TOUCH_END,this.onTouch,this);}
   onDisable(){input.off(Input.EventType.TOUCH_END,this.onTouch,this);}
-  configure(objects:SemanticObject[],answers:string[]){this.objects=objects;this.answers=new Set(answers);this.anomalyAt=null;this.falseTaps=0;this.prematureTaps=0;this.replays=0;}
+
+  resetSession(){
+    this.observations=[]; this.anomalyAt=null; this.falseTaps=0; this.prematureTaps=0; this.replays=0;
+    if(this.scoreLabel)this.scoreLabel.string='0';
+    if(this.rankLabel)this.rankLabel.string='—';
+  }
+
+  configure(objects:SemanticObject[],answers:string[],preserveRoundCounters=false){
+    this.objects=objects; this.answers=new Set(answers); this.anomalyAt=null;
+    if(!preserveRoundCounters){this.falseTaps=0;this.prematureTaps=0;this.replays=0;}
+  }
   markAnomalyVisible(){this.anomalyAt=performance.now();}
   markReplay(){this.replays++;}
 
