@@ -77,11 +77,29 @@ def render_manifest(manifest,asset_root,t):
   left=round(x-sprite.width/2); top=round(H-y-sprite.height/2); canvas.alpha_composite(sprite,(left,top))
  return canvas
 
+def semantic_coverage(manifest,asset_root,t):
+ base=render_manifest(manifest,asset_root,t).convert('RGBA')
+ overlay=Image.new('RGBA',(W,H),(0,0,0,0)); d=ImageDraw.Draw(overlay,'RGBA')
+ answers=set(manifest['answerObjectIds'])
+ for actor in manifest['actors']:
+  sem=actor.get('semantic')
+  if not sem or sem['id'] not in answers: continue
+  expansion=max(0,int(round(float(sem.get('touchExpansionPx',0)))))
+  for poly in sem['hitPolygons']:
+   pts=[(round(x),round(H-y)) for x,y in poly]
+   if expansion: d.line(pts+[pts[0]],fill=(44,255,164,72),width=expansion*2,joint='curve')
+   d.polygon(pts,fill=(44,255,164,52))
+   d.line(pts+[pts[0]],fill=(44,255,164,235),width=5,joint='curve')
+ d.rounded_rectangle((32,H-116,W-32,H-30),22,fill=(7,11,16,210))
+ d.text((58,H-94),'GREEN = answer polygon; glow = runtime touch tolerance',fill=(232,242,247,255))
+ return Image.alpha_composite(base,overlay)
+
 def evidence(asset_root,scene_root,out):
  out.mkdir(parents=True,exist_ok=True)
  for p in sorted(scene_root.glob('*.scene.json')):
   m=json.loads(p.read_text()); anomaly=m['anomalyAtMs']; baseline=m['evidenceBaselineAtMs']; end=max([anomaly]+[e['atMs']+(e.get('value',{}).get('durationMs',0) if isinstance(e.get('value'),dict) else 0) for e in m['timeline']])
   for label,t in [('before',baseline),('anomaly',anomaly),('after',end+100)]: save(q(render_manifest(m,asset_root,t)),out/f"{m['id']}-{label}.png")
+  save(q(semantic_coverage(m,asset_root,anomaly)),out/f"{m['id']}-tap-coverage.png")
 
 if __name__=='__main__':
  ap=argparse.ArgumentParser(); ap.add_argument('--output-root',default='factory-native/assets/resources/assets'); ap.add_argument('--scene-root',default='factory-native/assets/resources/scenes'); ap.add_argument('--evidence-dir',default='evidence/native-visual-v1'); a=ap.parse_args(); out=Path(a.output_root)
