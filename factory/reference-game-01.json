@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "gameId": "something-is-strange-reference-01",
+  "positioning": "How quickly do you notice the impossible?",
+  "session": {
+    "roundCount": 3,
+    "scoreModel": "perception-v1",
+    "resultCard": true
+  },
+  "ranks": ["UNAWARE", "ALERT", "SHARP", "UNCANNY"],
+  "rounds": [
+    {
+      "id": "extra-shadow",
+      "mechanic": "anomaly_presence",
+      "anomalyAtMs": 1650,
+      "answerObjects": ["impossible_shadow"],
+      "interactionPolicy": "semantic-visible-mask-expanded",
+      "visualIntent": "Two unmistakable people under one readable light source; two natural cast shadows, then a clearly impossible third cast shadow appears.",
+      "assetManifest": "factory/scenes/extra-shadow.scene.json"
+    },
+    {
+      "id": "early-splash",
+      "mechanic": "timing_violation",
+      "anomalyAtMs": 1900,
+      "answerObjects": ["splash"],
+      "interactionPolicy": "semantic-visible-mask-expanded",
+      "visualIntent": "Recognizable ball falling toward recognizable water; a coherent splash appears before contact. Every visible droplet and splash body belongs to the same tappable semantic object.",
+      "assetManifest": "factory/scenes/early-splash.scene.json"
+    },
+    {
+      "id": "color-theft",
+      "mechanic": "transformation",
+      "anomalyAtMs": 1750,
+      "answerObjects": ["vase", "exit_ball"],
+      "interactionPolicy": "semantic-visible-mask-expanded",
+      "visualIntent": "Red ball passes behind a clearly recognizable pale vase; ball exits pale while vase becomes red.",
+      "assetManifest": "factory/scenes/color-theft.scene.json"
+    }
+  ]
+}
