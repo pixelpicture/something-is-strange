@@ -29,6 +29,9 @@ jobs:
       - name: Assert no rejected production coupling
         run: |
           ! grep -R "engine-v[234]" factory-native
-          ! grep -R "WebView" factory-native/domain factory-native/cocos
-          ! grep -R "document\.\|window\." factory-native/domain
+          ! grep -R "WebView" factory-native/assets/scripts/domain factory-native/assets/scripts/cocos
+          ! grep -R "document\.\|window\." factory-native/assets/scripts/domain
+          test -f factory-native/package.json
+          test -d factory-native/assets
+          test -d factory-native/settings
           echo FACTORY_NATIVE_BOUNDARY_PASS
