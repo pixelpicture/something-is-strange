@@ -67,20 +67,20 @@ jobs:
             factory-native/assets/resources/scenes/*.scene.json
 
   creator-proof:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.creator_proof == true }}
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.creator_proof == true) }}
     needs: contract
     runs-on: macos-15
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 1
       - name: Restore Cocos Creator 3.8.8 cache
         uses: actions/cache@v4
         with:
           path: .ci/cocos-3.8.8
-          key: cocos-3.8.8-mac-010512-v1
+          key: cocos-3.8.8-mac-121518-v1
       - name: Install official Cocos Creator 3.8.8
         shell: bash
         run: |
@@ -89,8 +89,8 @@ jobs:
           EXE=$(find "$ROOT" -path '*/CocosCreator.app/Contents/MacOS/CocosCreator' -type f 2>/dev/null | head -1 || true)
           if [ -z "$EXE" ]; then
             mkdir -p "$ROOT"
-            ZIP="$RUNNER_TEMP/CocosCreator-v3.8.8-mac-010512.zip"
-            URL='https://download.cocos.org/CocosCreator/v3.8.8/CocosCreator-v3.8.8-mac-010512.zip'
+            ZIP="$RUNNER_TEMP/CocosCreator-v3.8.8-mac-121518.zip"
+            URL='https://download.cocos.com/CocosCreator/v3.8.8/CocosCreator-v3.8.8-mac-121518.zip'
             curl -fL --retry 2 --retry-delay 2 -A 'Mozilla/5.0 CocosCreator-CI/3.8.8' -e 'https://www.cocos.com/' -o "$ZIP" "$URL"
             BYTES=$(stat -f%z "$ZIP")
             test "$BYTES" -gt 100000000
