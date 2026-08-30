@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Something Is Strange</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="motion-v3.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="hud"><div class="brand">SOMETHING IS STRANGE</div><div class="streak" id="streak">PUZZLE 1 / 5</div></header>
+    <section class="card" aria-live="polite">
+      <div class="phase" id="phase">SPOT IT</div>
+      <div class="prompt" id="prompt">SPOT THE IMPOSSIBLE. TAP IT.</div>
+      <div class="timer" id="timer" hidden>—</div>
+      <div class="scene-wrap" id="sceneWrap">
+        <svg id="scene" viewBox="0 0 360 520" role="img" aria-label="Animated puzzle scene"></svg>
+        <button id="hotspot" class="hotspot" aria-label="Tap the impossible part"></button>
+        <div class="tap-layer" id="tapLayer" aria-hidden="true"></div>
+        <div class="tap-echo" id="tapEcho" aria-hidden="true"></div>
+      </div>
+      <div class="feedback" id="feedback"></div>
+      <div class="actions"><button id="replayBtn" class="secondary" hidden>WATCH AGAIN ↻</button><button id="nextBtn" class="next" hidden>NEXT PUZZLE →</button></div>
+    </section>
+    <footer class="footer">Something impossible will happen. Tap it when you see it.</footer>
+  </main>
+  <script src="levels.js"></script>
+  <script src="engine-v4.js"></script>
+  <script src="creative-mode.js"></script>
+  <script src="shadow-acquisition.js"></script>
+</body>
+</html>

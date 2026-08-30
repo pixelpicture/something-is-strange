@@ -1,0 +1,65 @@
+name: Phone Visual Proof
+
+on:
+  push:
+    branches: [ feature/mvp-physical-proof ]
+    paths-ignore:
+      - 'factory-native/**'
+      - 'factory/**'
+      - 'FACTORY_ARCHITECTURE_V1.md'
+      - 'PROJECT_STATE.md'
+      - 'scripts/validate_factory_native.mjs'
+      - 'scripts/validate_factory_v1.mjs'
+      - '.github/workflows/factory-native-contract.yml'
+  pull_request:
+    paths-ignore:
+      - 'factory-native/**'
+      - 'factory/**'
+      - 'FACTORY_ARCHITECTURE_V1.md'
+      - 'PROJECT_STATE.md'
+      - 'scripts/validate_factory_native.mjs'
+      - 'scripts/validate_factory_v1.mjs'
+      - '.github/workflows/factory-native-contract.yml'
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve Chrome
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          echo "CHROME=$CHROME" >> "$GITHUB_ENV"
+          "$CHROME" --version
+      - name: Serve prototype
+        run: |
+          python3 -m http.server 8000 >/tmp/sis-http.log 2>&1 &
+          for i in {1..20}; do curl -fsS http://127.0.0.1:8000/ >/dev/null && exit 0; sleep 0.2; done
+          cat /tmp/sis-http.log; exit 1
+      - name: Capture V3 watch answer reveal proof
+        run: |
+          set -euo pipefail
+          mkdir -p proof
+          capture(){ name="$1"; url="$2"; budget="$3"; "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars --window-size=412,915 --virtual-time-budget="$budget" --screenshot="proof/${name}.png" "$url"; }
+          shotset(){ base="$1"; level="$2"; observe="$3"; capture "${base}-watch" "http://127.0.0.1:8000/?level=${level}" 500; capture "${base}-answer" "http://127.0.0.1:8000/?level=${level}" $((observe+350)); capture "${base}-reveal" "http://127.0.0.1:8000/?level=${level}&revealAt=$((observe+250))" $((observe+850)); }
+          shotset shadow 0 3300
+          shotset extra-shadow 1 2800
+          shotset light-switch 2 2700
+          shotset reverse-splash 3 2500
+          shotset color-theft 4 3100
+          shotset door-two-rooms 5 3900
+          shotset wrong-mirror 6 2500
+          shotset haircut-mirror 7 3100
+          shotset wrong-occlusion 8 3400
+          shotset domino-break 9 3900
+      - name: Validate 30 phone frames
+        run: python3 scripts/validate_pngs.py proof
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phone-visual-proof-${{ github.sha }}
+          path: proof/*.png
+          retention-days: 7
+          if-no-files-found: error

@@ -1,0 +1,34 @@
+name: Cheap MVP Gate
+
+on:
+  push:
+    branches: [ main, feature/mvp-physical-proof ]
+    paths-ignore:
+      - 'factory-native/**'
+      - 'factory/**'
+      - 'FACTORY_ARCHITECTURE_V1.md'
+      - 'PROJECT_STATE.md'
+      - 'scripts/validate_factory_native.mjs'
+      - 'scripts/validate_factory_v1.mjs'
+      - '.github/workflows/factory-native-contract.yml'
+  pull_request:
+    paths-ignore:
+      - 'factory-native/**'
+      - 'factory/**'
+      - 'FACTORY_ARCHITECTURE_V1.md'
+      - 'PROJECT_STATE.md'
+      - 'scripts/validate_factory_native.mjs'
+      - 'scripts/validate_factory_v1.mjs'
+      - '.github/workflows/factory-native-contract.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/validate.mjs
+      - run: node scripts/deep_product_audit.mjs

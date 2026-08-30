@@ -1,0 +1,9 @@
+import fs from 'node:fs';import vm from 'node:vm';
+const root=new URL('../',import.meta.url),read=p=>fs.readFileSync(new URL(p,root),'utf8');const box={window:{}};vm.runInNewContext(read('levels.js'),box,{timeout:1000});const levels=box.window.SIS_LEVELS,engine=read('engine-v4.js'),html=read('index.html');
+if(!Array.isArray(levels)||levels.length!==5)throw new Error(`V4 physical slice must contain exactly 5 levels, got ${levels?.length}`);
+if(new Set(levels.map(x=>x.id)).size!==5)throw new Error('Duplicate level id');
+for(const l of levels){for(const f of ['id','mechanic','intro','question','anomalyMs','hotspot','focusId','revealText'])if(l[f]==null)throw new Error(`${l.id} missing ${f}`);if(l.anomalyMs<1400||l.anomalyMs>2400)throw new Error(`${l.id}: anomaly timing outside continuous comprehension gate`);if(!/^TAP\b/.test(l.question))throw new Error(`${l.id}: post-event instruction must say TAP`);const h=l.hotspot;if(h.w*h.h<500)throw new Error(`${l.id}: target too small`);if(!engine.includes(`${l.mechanic}(){`))throw new Error(`${l.id}: renderer missing`);if(!engine.includes(`id=\"${l.focusId}\"`)&&!engine.includes(`q(l.focusId)`))throw new Error(`${l.id}: focus target missing`)}
+for(const t of ['anomalyReady','early_tap','wrong_tap','correct_tap','reveal_shown','KEEP WATCHING — IT HASN\'T HAPPENED YET.','NOT THAT — KEEP LOOKING.','replayBtn.addEventListener','nextBtn.addEventListener'])if(!engine.includes(t))throw new Error(`V4 interaction invariant missing ${t}`);
+if(!html.includes('engine-v4.js')||html.includes('engine-v3.js')||html.includes('engine-v2.js'))throw new Error('Playable path must use only V4 engine');
+if(html.indexOf('levels.js')>html.indexOf('engine-v4.js'))throw new Error('Level data must load first');
+console.log('PASS: V4 continuous 5-level physical comprehension slice structurally valid.');

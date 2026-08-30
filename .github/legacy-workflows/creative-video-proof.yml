@@ -1,0 +1,105 @@
+name: Shadow Acquisition Frame Proof
+
+on:
+  push:
+    branches: [ feature/mvp-physical-proof ]
+    paths-ignore:
+      - 'factory-native/**'
+      - 'factory/**'
+      - 'FACTORY_ARCHITECTURE_V1.md'
+      - 'PROJECT_STATE.md'
+      - 'scripts/validate_factory_native.mjs'
+      - 'scripts/validate_factory_v1.mjs'
+      - '.github/workflows/factory-native-contract.yml'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - 'factory-native/**'
+      - 'factory/**'
+      - 'FACTORY_ARCHITECTURE_V1.md'
+      - 'PROJECT_STATE.md'
+      - 'scripts/validate_factory_native.mjs'
+      - 'scripts/validate_factory_v1.mjs'
+      - '.github/workflows/factory-native-contract.yml'
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve Chrome and ffmpeg
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || true)"
+          test -n "$CHROME"
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg >/tmp/sis-ffmpeg-install.log 2>&1 || { cat /tmp/sis-ffmpeg-install.log; exit 1; }
+          fi
+          FFMPEG="$(command -v ffmpeg)"
+          echo "CHROME=$CHROME" >> "$GITHUB_ENV"
+          echo "FFMPEG=$FFMPEG" >> "$GITHUB_ENV"
+      - name: Serve prototype
+        run: |
+          python3 -m http.server 8000 >/tmp/sis-http.log 2>&1 &
+          for i in {1..20}; do curl -fsS http://127.0.0.1:8000/ >/dev/null && exit 0; sleep 0.2; done
+          cat /tmp/sis-http.log; exit 1
+      - name: Launch one headless Chrome session
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/sis-chrome
+          "$CHROME" --headless --no-sandbox --disable-gpu --hide-scrollbars \
+            --remote-debugging-port=9222 --user-data-dir=/tmp/sis-chrome \
+            --window-size=540,960 about:blank >/tmp/sis-chrome.log 2>&1 &
+          for i in {1..90}; do
+            if curl -fsS http://127.0.0.1:9222/json/version >/tmp/sis-devtools.json; then
+              cat /tmp/sis-devtools.json
+              exit 0
+            fi
+            sleep 0.5
+          done
+          cat /tmp/sis-chrome.log
+          exit 1
+      - name: Capture deterministic A/B frames in one browser session
+        run: |
+          set -euo pipefail
+          node scripts/capture_shadow_frames.mjs
+      - name: Validate physical change
+        run: |
+          set -euo pipefail
+          test "$(find shadow-proof -name '*.png' | wc -l)" -eq 10
+          for variant in baseline acquisition; do
+            cmp -s "shadow-proof/${variant}-t200.png" "shadow-proof/${variant}-t3500.png" && exit 1 || true
+          done
+      - name: Capture one acquisition video in same Chrome
+        run: |
+          set -euo pipefail
+          node scripts/capture_shadow_acq_video.mjs
+          test "$(find shadow-video -name 'frame*.png' | wc -l)" -eq 34
+          python3 - <<'PY'
+          import glob, struct
+          files=sorted(glob.glob('shadow-video/frame*.png'))
+          assert len(files)==34, len(files)
+          for p in files:
+              with open(p,'rb') as f:
+                  sig=f.read(24)
+              assert sig[:8] == b'\x89PNG\r\n\x1a\n', p
+              w,h=struct.unpack('>II', sig[16:24])
+              assert (w,h)==(540,960), (p,w,h)
+          PY
+          "$FFMPEG" -y -loglevel error -framerate 10 -i shadow-video/frame%03d.png \
+            -c:v libx264 -pix_fmt yuv420p -movflags +faststart shadow-acquisition.mp4
+          test -s shadow-acquisition.mp4
+          "$FFMPEG" -v error -i shadow-acquisition.mp4 -f null -
+          rm -rf shadow-video
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shadow-acquisition-proof-${{ github.sha }}
+          path: |
+            shadow-proof/*.png
+            shadow-acquisition.mp4
+          retention-days: 7
+          if-no-files-found: error

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "early-splash",
+  "mechanic": "timing_violation",
+  "canvas": { "width": 1080, "height": 1920 },
+  "assets": [
+    { "id": "pool-bg", "role": "background", "path": "assets/early-splash/pool.png", "width": 1080, "height": 1920 },
+    { "id": "ball", "role": "actor", "path": "assets/early-splash/ball.png", "width": 180, "height": 180 },
+    { "id": "splash", "role": "effect", "path": "assets/early-splash/splash.png", "width": 520, "height": 430 }
+  ],
+  "actors": [
+    { "id": "background", "z": 0, "x": 540, "y": 960, "initialState": "base", "states": { "base": { "assetId": "pool-bg" } } },
+    { "id": "ball", "z": 4, "x": 540, "y": 1500, "initialState": "base", "states": { "base": { "assetId": "ball" } } },
+    {
+      "id": "splashActor", "z": 3, "x": 540, "y": 720, "initialState": "hidden",
+      "states": { "hidden": { "assetId": "splash", "visible": false }, "shown": { "assetId": "splash", "visible": true } },
+      "semantic": {
+        "id": "splash", "z": 3, "touchExpansionPx": 30,
+        "hitPolygons": [
+          [[325,510],[765,510],[765,615],[735,785],[675,870],[610,915],[510,915],[410,845],[345,770],[325,610]],
+          [[395,730],[475,730],[475,875],[395,875]],
+          [[590,745],[710,745],[710,875],[590,875]],
+          [[500,820],[585,820],[585,940],[500,940]]
+        ]
+      }
+    }
+  ],
+  "timeline": [
+    { "atMs": 500, "actorId": "ball", "command": "move", "value": { "x": 540, "y": 650, "durationMs": 2500 } },
+    { "atMs": 1900, "actorId": "splashActor", "command": "state", "value": "shown" }
+  ],
+  "anomalyAtMs": 1900,
+  "evidenceBaselineAtMs": 900,
+  "answerObjectIds": ["splash"],
+  "humanIntent": { "normalExpectation": "A ball is visibly falling toward still pool water.", "impossibleEvent": "A coherent splash appears while the ball is still visibly above the water.", "visualQuestion": "What happened before its cause?" }
+}

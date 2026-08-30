@@ -1,0 +1,89 @@
+name: Android Device Lab
+on:
+  push:
+    branches: [ feature/mvp-physical-proof ]
+    paths-ignore:
+      - 'factory-native/**'
+      - 'factory/**'
+      - 'FACTORY_ARCHITECTURE_V1.md'
+      - 'PROJECT_STATE.md'
+      - 'scripts/validate_factory_native.mjs'
+      - 'scripts/validate_factory_v1.mjs'
+      - '.github/workflows/factory-native-contract.yml'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - 'factory-native/**'
+      - 'factory/**'
+      - 'FACTORY_ARCHITECTURE_V1.md'
+      - 'PROJECT_STATE.md'
+      - 'scripts/validate_factory_native.mjs'
+      - 'scripts/validate_factory_v1.mjs'
+      - '.github/workflows/factory-native-contract.yml'
+  workflow_dispatch:
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+jobs:
+  physical-gameplay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ env.SOURCE_SHA }}" }
+      - name: Prove exact source checkout
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - uses: actions/setup-java@v5
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.7' }
+      - name: Enable KVM
+        run: sudo chmod 666 /dev/kvm && test -r /dev/kvm && test -w /dev/kvm
+      - name: Stage exact V4 prototype
+        run: |
+          set -euo pipefail
+          rm -rf android-device-lab/app/src/main/assets; mkdir -p android-device-lab/app/src/main/assets
+          cp index.html styles.css motion-v3.css levels.js engine-v4.js creative-mode.js shadow-acquisition.js android-device-lab/app/src/main/assets/
+          cp scripts/device_lab_probe.js android-device-lab/app/src/main/assets/device-lab-probe.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android-device-lab/app/src/main/assets/index.html');s=p.read_text();m='  <script src="shadow-acquisition.js"></script>'
+          assert m in s and 'engine-v4.js' in s and 'engine-v3.js' not in s
+          p.write_text(s.replace(m,'  <script src="device-lab-probe.js"></script>\n'+m,1))
+          PY
+      - name: Build APK
+        working-directory: android-device-lab
+        run: for attempt in 1 2 3; do gradle --no-daemon assembleDebug && exit 0; [ "$attempt" -eq 3 ] && exit 1; sleep $((attempt*30)); done
+      - name: Ensure ffmpeg
+        run: command -v ffmpeg >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+      - name: Run Android physical interactions
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: bash scripts/android_device_lab.sh
+      - name: Validate evidence
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$SOURCE_SHA" > device-proof/source-sha.txt
+          grep -q 'HUMAN_DEFAULT_PATH_PASS' device-proof/device-log.txt
+          grep -q 'FIVE_LEVEL_CYCLE_PASS' device-proof/device-log.txt
+          grep -q 'EARLY_TAP_PASS' device-proof/device-log.txt
+          grep -q 'WRONG_TAP_PASS' device-proof/device-log.txt
+          grep -q 'ACQ_BASE' device-proof/device-log.txt
+          grep -q 'ACQ_TURN' device-proof/device-log.txt
+          test "$(cat device-proof/source-sha.txt)" = "$SOURCE_SHA"
+          python3 - <<'PY'
+          import glob,struct
+          f=glob.glob('device-proof/**/*.png',recursive=True);assert len(f)>=18,len(f)
+          for p in f:
+            b=open(p,'rb').read();assert len(b)>25000,(p,len(b));w,h=struct.unpack('>II',b[16:24]);assert w>=720 and h>=1280,(p,w,h)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: "android-device-lab-${{ env.SOURCE_SHA }}", path: device-proof/, retention-days: 7, if-no-files-found: error }
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with: { name: "something-is-strange-device-check-${{ env.SOURCE_SHA }}", path: android-device-lab/app/build/outputs/apk/debug/app-debug.apk, retention-days: 7, if-no-files-found: error }
