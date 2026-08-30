@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Sprite, SpriteFrame, resources, tween, Vec3, UITransform } from 'cc';
+import { _decorator, Component, Node, Sprite, SpriteFrame, resources, tween, Vec3, UITransform, Color } from 'cc';
 import type { LayeredSceneManifest, TimelineCommand } from '../domain/SceneManifest';
 const {ccclass}=_decorator;
 
@@ -23,7 +23,7 @@ export class LayeredSceneRenderer extends Component {
   clear(){this.unscheduleAllCallbacks();for(const n of this.actorNodes.values())n.destroy();this.actorNodes.clear();this.manifest=null;}
   private apply(e:TimelineCommand,frames:Map<string,SpriteFrame>){const n=this.actorNodes.get(e.actorId);if(!n)return;
     if(e.command==='state'){const actor=this.manifest!.actors.find(a=>a.id===e.actorId)!;const s=actor.states[String(e.value)];const sprite=n.getComponent(Sprite)!;const frame=frames.get(s.assetId);if(frame)sprite.spriteFrame=frame;n.active=s.visible!==false;return;}
-    if(e.command==='opacity'){const sprite=n.getComponent(Sprite)!;sprite.color=sprite.color.clone();sprite.color.a=Number(e.value);return;}
+    if(e.command==='opacity'){const sprite=n.getComponent(Sprite)!;const c=sprite.color;sprite.color=new Color(c.r,c.g,c.b,Number(e.value));return;}
     if(e.command==='rotate'){n.setRotationFromEuler(0,0,Number(e.value));return;}
     if(e.command==='move'&&typeof e.value==='object'){const v=e.value as {x:number;y:number;durationMs:number};tween(n).to(v.durationMs/1000,{position:new Vec3(v.x-this.manifest!.canvas.width/2,v.y-this.manifest!.canvas.height/2,n.position.z)}).start();}
   }
