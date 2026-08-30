@@ -82,7 +82,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .ci/cocos-3.8.8
-          key: cocos-3.8.8-win-010512-v1
+          key: cocos-3.8.8-win-010512-v2
       - name: Install official Cocos Creator 3.8.8
         if: steps.marker.outputs.run == 'true'
         shell: pwsh
@@ -92,7 +92,20 @@ jobs:
           if (-not $exe) {
             New-Item -ItemType Directory -Force -Path $root | Out-Null
             $zip = Join-Path $env:RUNNER_TEMP 'CocosCreator-v3.8.8-win-010512.zip'
-            Invoke-WebRequest -Uri 'https://download.cocos.org/CocosCreator/v3.8.8/CocosCreator-v3.8.8-win-010512.zip' -OutFile $zip
+            $urls = @(
+              'https://download.cocos.org/CocosCreator/v3.8.8/CocosCreator-v3.8.8-win-010512.zip',
+              'https://download.cocos.com/CocosCreator/v3.8.8/CocosCreator-v3.8.8-win-010512.zip'
+            )
+            $downloaded = $false
+            foreach ($url in $urls) {
+              try {
+                Write-Host "Trying official Creator package: $url"
+                & curl.exe -fL --retry 2 --retry-delay 2 -A 'Mozilla/5.0 CocosCreator-CI/3.8.8' -e 'https://www.cocos.com/' -o $zip $url
+                if ($LASTEXITCODE -eq 0 -and (Test-Path $zip) -and (Get-Item $zip).Length -gt 100MB) { $downloaded = $true; break }
+              } catch { Write-Warning $_ }
+              if (Test-Path $zip) { Remove-Item $zip -Force }
+            }
+            if (-not $downloaded) { throw 'Official Cocos Creator 3.8.8 package unavailable from both Cocos CDN endpoints' }
             Expand-Archive -Path $zip -DestinationPath $root -Force
           }
           $exe = Get-ChildItem -Path $root -Filter CocosCreator.exe -Recurse | Select-Object -First 1
