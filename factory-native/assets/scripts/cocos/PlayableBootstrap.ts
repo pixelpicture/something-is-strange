@@ -3,6 +3,7 @@ import { LayeredSceneRenderer } from './LayeredSceneRenderer';
 import { ReferenceGameController } from './ReferenceGameController';
 import { ReferenceGameFlow } from './ReferenceGameFlow';
 import { ResultCardController } from './ResultCardController';
+import { roundedPanel } from './UiChrome';
 const { ccclass } = _decorator;
 
 @ccclass('PlayableBootstrap')
@@ -19,15 +20,19 @@ export class PlayableBootstrap extends Component {
     const renderer = gameplayNode.addComponent(LayeredSceneRenderer);
     const controller = gameplayNode.addComponent(ReferenceGameController);
 
+    roundedPanel(canvasNode,'HUDChrome',0,850,1030,150,34,new Color(9,14,20,205),2);
     const hudNode = new Node('HUD');
     canvasNode.addChild(hudNode);
-    const score = this.label(hudNode, 'Score', -420, 850, 42);
-    const rank = this.label(hudNode, 'Rank', 300, 850, 42);
+    const score = this.label(hudNode, 'Score', -380, 850, 42, '0');
+    const rank = this.label(hudNode, 'Rank', 320, 850, 42, '—');
+    this.label(hudNode,'Hook',0,760,34,"FIND WHAT'S WRONG");
     controller.scoreLabel = score;
     controller.rankLabel = rank;
 
     const resultNode = new Node('ResultCard');
     canvasNode.addChild(resultNode);
+    roundedPanel(resultNode,'ResultDim',0,0,1080,1920,0,new Color(4,7,10,225),0);
+    roundedPanel(resultNode,'ResultPanel',0,40,900,920,48,new Color(18,25,34,250),2);
     const result = resultNode.addComponent(ResultCardController);
     result.titleLabel = this.label(resultNode, 'ResultTitle', 0, 310, 40);
     result.scoreLabel = this.label(resultNode, 'ResultScore', 0, 210, 78);
@@ -48,14 +53,14 @@ export class PlayableBootstrap extends Component {
     await flow.start();
   }
 
-  private label(parent: Node, name: string, x: number, y: number, size: number): Label {
+  private label(parent: Node, name: string, x: number, y: number, size: number, text=name): Label {
     const n = new Node(name);
     parent.addChild(n);
     n.setPosition(x, y, 10);
     const ui = n.addComponent(UITransform);
     ui.setContentSize(700, 90);
     const label = n.addComponent(Label);
-    label.string = name;
+    label.string = text;
     label.fontSize = size;
     label.lineHeight = Math.round(size * 1.15);
     label.color = new Color(255,255,255,255);
@@ -63,10 +68,9 @@ export class PlayableBootstrap extends Component {
   }
 
   private button(parent:Node,name:string,x:number,y:number,width:number,height:number,size:number){
-    const node=new Node(name); parent.addChild(node); node.setPosition(x,y,20);
-    const ui=node.addComponent(UITransform); ui.setContentSize(width,height);
+    const node=roundedPanel(parent,name,x,y,width,height,30,new Color(240,109,68,255),20);
     const button=node.addComponent(Button);
-    const label=node.addComponent(Label); label.string='↻  BEAT YOUR BEST'; label.fontSize=size; label.lineHeight=Math.round(size*1.15); label.color=new Color(255,255,255,255);
+    const label=this.label(node,`${name}Label`,0,0,size,'↻  BEAT YOUR BEST');
     return {node,button,label};
   }
 }
