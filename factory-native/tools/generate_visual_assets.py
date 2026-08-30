@@ -28,14 +28,14 @@ def park(out):
  im=photo('park',.54); im=Image.alpha_composite(im,Image.new('RGBA',(W,H),(13,24,38,30))); save(im,out/'extra-shadow/park.png')
 
 def person(*_args,**_kwargs):
- # The validation plate already contains two real people. Keep actor slots transparent so
- # gameplay/timeline structure stays unchanged while avoiding cartoon-over-photo compositing.
  return Image.new('RGBA',(260,620),(0,0,0,0))
 
 def shadow(size,extra=False):
- w,h=size; m=Image.new('L',size,0); d=ImageDraw.Draw(m); cx=w*.5; d.ellipse((cx-46,52,cx+46,144),fill=145); d.polygon([(cx-52,132),(cx+55,132),(cx+78,h*.53),(cx+40,h*.63),(cx+24,h-34),(cx-8,h-24),(cx-18,h*.65),(cx-70,h*.55)],fill=145)
- if extra: d.polygon([(cx+36,h*.51),(w-20,h*.71),(w-32,h*.78),(cx+18,h*.61)],fill=138)
- m=m.filter(ImageFilter.GaussianBlur(26)); col=Image.new('RGBA',size,(7,10,15,0)); col.putalpha(m); return col
+ w,h=size; m=Image.new('L',size,0); d=ImageDraw.Draw(m); cx=w*.5
+ d.ellipse((cx-46,52,cx+46,144),fill=225)
+ d.polygon([(cx-52,132),(cx+55,132),(cx+78,h*.53),(cx+40,h*.63),(cx+24,h-34),(cx-8,h-24),(cx-18,h*.65),(cx-70,h*.55)],fill=225)
+ if extra: d.polygon([(cx+36,h*.51),(w-20,h*.71),(w-32,h*.78),(cx+18,h*.61)],fill=215)
+ m=m.filter(ImageFilter.GaussianBlur(16)); col=Image.new('RGBA',size,(5,7,10,0)); col.putalpha(m); return col
 
 def pool(out):
  im=photo('pool',.58); im=Image.alpha_composite(im,Image.new('RGBA',(W,H),(8,86,142,26))); save(im,out/'early-splash/pool.png')
@@ -112,4 +112,4 @@ def evidence(asset_root,scene_root,out):
 
 if __name__=='__main__':
  ap=argparse.ArgumentParser(); ap.add_argument('--output-root',default='factory-native/assets/resources/assets'); ap.add_argument('--scene-root',default='factory-native/assets/resources/scenes'); ap.add_argument('--evidence-dir',default='evidence/native-visual-v1'); a=ap.parse_args(); out=Path(a.output_root)
- park(out); save(person(),out/'extra-shadow/person-a.png'); save(person(),out/'extra-shadow/person-b.png'); save(q(shadow((360,520))),out/'extra-shadow/shadow-natural.png'); save(q(shadow((380,560),True)),out/'extra-shadow/shadow-impossible.png'); pool(out); table(out); evidence(out,Path(a.scene_root),Path(a.evidence_dir)); print('NATIVE_VISUAL_ASSETS_GENERATED_FROM_MANIFESTS')
+ park(out); save(person(),out/'extra-shadow/person-a.png'); save(person(),out/'extra-shadow/person-b.png'); save(shadow((360,520)),out/'extra-shadow/shadow-natural.png'); save(shadow((380,560),True),out/'extra-shadow/shadow-impossible.png'); pool(out); table(out); evidence(out,Path(a.scene_root),Path(a.evidence_dir)); print('NATIVE_VISUAL_ASSETS_GENERATED_FROM_MANIFESTS')
