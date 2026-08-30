@@ -31,30 +31,22 @@ def person(*_args,**_kwargs):
  return Image.new('RGBA',(260,620),(0,0,0,0))
 
 def shadow(size,extra=False):
- w,h=size; cx=w*(.70 if extra else .35)
- # A cast shadow should lie on the path, not stand up like a black person.
- # Natural shadows attach close to the photographed walkers' feet. The
- # ownerless third projection is offset into clear path, but keeps the same
- # light direction and perspective so the anomaly is semantic, not stylistic.
+ w,h=size; cx=w*(.35 if extra else .30)
+ # Ground-plane cast shadow: contact at the feet, then a strongly
+ # foreshortened projection runs down-right with one shared light direction.
+ # Geometry stays inside the sprite so penumbra never clips into hard edges.
  m=Image.new('L',size,0); d=ImageDraw.Draw(m)
- d.ellipse((cx-34,106,cx-6,156),fill=184)
- d.ellipse((cx+4,104,cx+32,156),fill=184)
- d.polygon([(cx-30,142),(cx+28,142),(cx+5,230),(cx-55,300),(cx-105,365),(cx-147,412),(cx-176,398),(cx-146,350),(cx-92,287),(cx-39,218)],fill=144)
- d.polygon([(cx+10,148),(cx+34,152),(cx+12,232),(cx-33,293),(cx-62,280),(cx-20,219)],fill=126)
- d.polygon([(cx-155,360),(cx-106,326),(cx-56,285),(cx-8,239),(cx+9,265),(cx-34,316),(cx-91,378),(cx-154,417)],fill=140)
- head_shift=12 if extra else 0
- d.ellipse((cx-196-head_shift,384+head_shift*.25,cx-116,442+head_shift*.25),fill=148)
- # Broad penumbra keeps the projection embedded in the photographed surface.
+ d.ellipse((cx-24,104,cx-2,150),fill=165); d.ellipse((cx+4,104,cx+26,150),fill=165)
+ d.polygon([(cx-20,140),(cx+24,140),(cx+48,220),(cx+95,285),(cx+130,345),(cx+155,392),(cx+130,407),(cx+92,355),(cx+58,300),(cx+20,225)],fill=122)
+ d.polygon([(cx+7,145),(cx+29,148),(cx+58,225),(cx+103,290),(cx+80,305),(cx+37,242)],fill=110)
+ d.polygon([(cx+46,235),(cx+88,270),(cx+128,314),(cx+166,362),(cx+144,390),(cx+105,350),(cx+67,307),(cx+34,262)],fill=118)
+ d.ellipse((cx+138,372,cx+202,424),fill=126)
  pen=m.filter(ImageFilter.GaussianBlur(15))
- # Only the immediate foot contact gets a tighter, darker core.
  contact=Image.new('L',size,0); c=ImageDraw.Draw(contact)
- c.ellipse((cx-38,112,cx+35,165),fill=78)
- c.polygon([(cx-31,145),(cx+31,145),(cx+10,215),(cx-33,246),(cx-52,218)],fill=66)
- contact=contact.filter(ImageFilter.GaussianBlur(6))
+ c.ellipse((cx-30,110,cx+32,160),fill=70); c.polygon([(cx-22,144),(cx+28,144),(cx+42,205),(cx+15,225),(cx-8,202)],fill=52)
  from PIL import ImageChops
- alpha=ImageChops.add(pen,contact)
- alpha=alpha.point(lambda v:min(255,round(v*1.20)))
- col=Image.new('RGBA',size,(20,23,24,0)); col.putalpha(alpha); return col
+ alpha=ImageChops.add(pen,contact.filter(ImageFilter.GaussianBlur(6))).point(lambda v:min(255,round(v*1.15)))
+ col=Image.new('RGBA',size,(18,21,23,0)); col.putalpha(alpha); return col
 
 def pool(out):
  im=photo('pool',.58); im=Image.alpha_composite(im,Image.new('RGBA',(W,H),(8,86,142,26))); save(im,out/'early-splash/pool.png')
