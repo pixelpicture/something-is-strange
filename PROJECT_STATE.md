@@ -41,31 +41,41 @@ Reusable contracts:
 
 Invariant: a player who understood the answer must never fail because an invisible rectangular hotspot disagrees with the visible semantic object.
 
-## Native-ready implementation started
-Native factory skeleton implemented after architecture freeze:
-- `factory-native/domain/PerceptionScore.ts` — pure TypeScript scoring;
-- `factory-native/domain/SemanticHit.ts` — pure TypeScript semantic hit geometry;
-- `factory-native/domain/Runtime.ts` — engine-independent scene/round contracts;
-- `factory-native/cocos/ReferenceGameController.ts` — thin Cocos input/score adapter;
-- `factory-native/README.md` — dependency boundaries and vertical-slice policy.
+## Native implementation — current verified state
+`factory-native/` is now a real Cocos Creator 3.8.8 project layout rather than only a skeleton:
+- engine-independent score/session/semantic-hit/coordinate contracts;
+- data-first manifests for Extra Shadow, Early Splash and Color Theft;
+- deterministic layered raster asset/evidence generation;
+- manifest-faithful before/anomaly/after renderer using the same bottom-left design coordinates, z-order, actor states and linear movement semantics as the Cocos adapter;
+- `LayeredSceneRenderer`, `ReferenceGameController`, `ReferenceGameFlow`, `ResultCardController`;
+- `PlayableBootstrap.ts` programmatically creates Canvas, gameplay renderer/controller, HUD, result card and starts the three-round flow;
+- `ReferenceGame01.scene` is a minimal real Cocos scene that mounts the bootstrap component;
+- full native TypeScript source compiles against official `@cocos/creator-types@3.8.8`.
 
-The Cocos adapter does not own game truth. Domain code contains no Cocos, TikTok, Android, DOM, SVG or WebView dependency. This is intentional so future games can reuse mechanics/meta independently of renderer/platform.
+The 3.8.8 API typecheck exposed and fixed a real incompatibility (`Color.a` is read-only). Machine contracts therefore now cover substantially more than source-shape checks.
 
-Do NOT create a fake native PASS by porting the rejected SVG art. First native phone candidate is blocked until all three reference rounds have production-intent layered assets plus semantic masks.
+## Real Creator build gate
+A real `bytedance-mini-game` build remains **UNPROVEN / EXTERNALLY BLOCKED**, not failed by project code.
+
+Evidence:
+- canonical CI successfully reaches the real Creator-proof acquisition job only after the cheap contracts/typecheck pass;
+- the temporary January 2026 `CocosCreator-v3.8.8-*-010512` hotfix package on `download.cocos.org` now returns HTTP 403 from both Windows and macOS GitHub-hosted runners;
+- the alternate historical `download.cocos.com` hotfix path is absent (404);
+- baseline Creator 3.8.8 is currently distributed through Cocos Dashboard, whose normal flow requires a Cocos Developer account/login;
+- official open-source `cocos/cocos-cli` was inspected as a possible credential-free substitute, but its current platform implementations include Android/iOS/desktop/web families and do not include ByteDance/Douyin/TikTok Mini Game, so using it would not prove the production target.
+
+Do not use random third-party mirrors, do not fake a Creator PASS, and do not substitute WebView/web packaging. Re-run expensive `[creator-proof]` only when a concrete official/pinned Creator distribution becomes available to CI or an authenticated Creator runner is deliberately provisioned.
 
 ## Platform correction
-Production target: **Cocos Creator 3.x / TypeScript -> TikTok Mini Games Native Runtime**. Existing HTML/WebView/Android path remains cheap R&D/evidence infrastructure only. Do not invest further in it as production architecture. Unity remains a future adapter for candidates that materially need 3D/physics; it is not Factory V1 default.
+Production target remains **Cocos Creator 3.8.8 / TypeScript -> ByteDance/TikTok Mini Games runtime**. Existing HTML/WebView/Android path remains legacy R&D/evidence only. Unity remains a future adapter only for candidates that materially need 3D/physics.
 
 ## Visual architecture
-No `engine-v5/v6` with bespoke coded SVG scenes. Target:
-- recognizable illustrated layered 2D assets;
-- manifest describes actors/transforms/z-order/timeline/anomaly;
-- semantic object owns visual/hit geometry;
-- renderer consumes assets/manifests;
-- gameplay never embeds level-specific drawing code.
+No `engine-v5/v6` with bespoke coded SVG scenes. Current native asset contract is ordinary layered raster sprites plus manifests and semantic geometry. The deterministic generator/evidence renderer is a cheap production-intent placeholder/proof mechanism, **not evidence that final art is commercially beautiful**.
+
+Machine/assistant review so far has already rejected earlier evidence versions for misleading coordinate composition, an Early Splash causality/timing issue, and a Color Theft baseline chosen too late. Those defects were repaired in data/evidence rather than hidden by presentation.
 
 ## Evidence policy
-Machine CI may PASS state transitions, exceptions, semantic hit coverage, timing, manifests/assets, package integrity, provenance and evidence generation. Machine/assistant proxy review must NOT claim final PASS for beauty, instant recognizability, fun, desire-to-continue or commercial quality. Those require physical/blind human evidence.
+Machine CI may PASS state transitions, exceptions, semantic hit coverage, timing, manifests/assets, package integrity, provenance, Cocos API compatibility and evidence generation. Machine/assistant proxy review must NOT claim final PASS for beauty, instant recognizability, fun, desire-to-continue or commercial quality. Those require physical/blind human evidence.
 
 ## Kill / throughput policy
 Future candidates: one bounded repair for a concrete falsifiable cause; two independent human failures of the same core loop => KILL unless a genuinely different product hypothesis exists; no >3 polished rounds before desire-to-continue is demonstrated.
@@ -74,17 +84,21 @@ Post-extraction targets: mechanic proof <=1h autonomous; 3-round slice <=3h when
 
 ## Current gates
 - V5 physical phone: **FAIL**
-- Current SVG production visual system: **REJECT**
+- Rejected SVG/WebView production visual system: **REJECT**
 - Rectangular hotspot interaction: **REJECT**
 - No-meta five-puzzle product: **REJECT**
 - Continuous anomaly mechanic: **BET/HOLD**
-- Factory Architecture V1: **FROZEN / IMPLEMENTATION STARTED**
-- Native domain/runtime skeleton: **IMPLEMENTED, NOT YET NATIVE-BUILT**
-- Cocos production adapter: **SKELETON IMPLEMENTED**
-- Three production-intent layered scenes/masks: **NEXT BLOCKER**
+- Factory Architecture V1: **FROZEN / IMPLEMENTED TO REFERENCE-SLICE DEPTH**
+- Native domain/runtime: **IMPLEMENTED**
+- Cocos playable scene/bootstrap: **IMPLEMENTED / CONTRACT PASS**
+- Official Cocos 3.8.8 API typecheck: **PASS**
+- Manifest-faithful visual evidence pipeline: **PASS AS MACHINE EVIDENCE ONLY**
+- Real Creator 3.8.8 ByteDance package build: **BLOCKED BY VENDOR DISTRIBUTION/AUTH; NOT YET PROVEN**
+- Production visual quality: **NOT PASS; HUMAN REVIEW REQUIRED**
+- Physical-phone candidate: **BLOCKED**
 - Backend / ads / IAP / content scale: **BLOCKED**
 - H1 blind humans: **BLOCKED** until reconstructed physical PASS
 - Organic TikTok: **BLOCKED** until H1 PASS
 
 ## Next work
-Build the reusable layered-scene asset/manifest contract and three production-intent scenes, then wire the Cocos renderer/result-card path and establish a native build/evidence gate. Do not spend another cycle polishing the rejected WebView product.
+Do not spend more Actions probing dead Creator hotfix URLs. Continue P0 on the evidence we can falsify now: strengthen the three visual scenes and semantic masks, verify result-card/meta-loop behavior and fair tap coverage, and perform another human artifact review. In parallel, only resume real Creator build proof when an official/pinned editor package or authenticated Creator runner is actually available. Do not return to rejected WebView production work.
