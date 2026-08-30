@@ -1,0 +1,23 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+
+const ROOT='factory-native';
+const scenePath=`${ROOT}/assets/ReferenceGame01.scene`;
+const sceneMetaPath=`${scenePath}.meta`;
+const bootstrapPath=`${ROOT}/assets/scripts/cocos/PlayableBootstrap.ts`;
+const bootstrapMetaPath=`${bootstrapPath}.meta`;
+for(const p of [scenePath,sceneMetaPath,bootstrapPath,bootstrapMetaPath])assert.ok(fs.existsSync(p),`missing playable Cocos asset ${p}`);
+const scene=JSON.parse(fs.readFileSync(scenePath,'utf8'));
+assert.equal(scene[0].__type__,'cc.SceneAsset');
+assert.equal(scene[1].__type__,'cc.Scene');
+assert.equal(scene[2]._name,'Bootstrap');
+assert.equal(scene[3].__type__,'6b3e1+QT3RLUYyCT5xtKajx');
+assert.equal(scene[3].node.__id__,2);
+const sceneMeta=JSON.parse(fs.readFileSync(sceneMetaPath,'utf8'));
+assert.equal(sceneMeta.importer,'scene');
+const bootstrapMeta=JSON.parse(fs.readFileSync(bootstrapMetaPath,'utf8'));
+assert.equal(bootstrapMeta.importer,'typescript');
+assert.equal(bootstrapMeta.uuid,'6b3e1f90-4f74-4b51-8c82-4f9c6d29a8f1');
+const bootstrap=fs.readFileSync(bootstrapPath,'utf8');
+for(const phrase of ['addComponent(Canvas)','addComponent(LayeredSceneRenderer)','addComponent(ReferenceGameController)','addComponent(ResultCardController)','addComponent(ReferenceGameFlow)','await flow.start()'])assert.ok(bootstrap.includes(phrase),`playable bootstrap missing ${phrase}`);
+console.log('COCOS_PLAYABLE_SCENE_CONTRACT_PASS');

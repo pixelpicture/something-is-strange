@@ -6,6 +6,7 @@ on:
       - 'factory-native/**'
       - 'factory/**'
       - 'scripts/validate_factory_native.mjs'
+      - 'scripts/validate_cocos_playable.mjs'
       - 'scripts/validate_factory_v1.mjs'
       - '.github/workflows/factory-native-contract.yml'
   workflow_dispatch:
@@ -29,16 +30,18 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check pillow==11.3.0
           python factory-native/tools/generate_visual_assets.py
-      - name: Validate Factory V1 contracts and generated visual slice
+      - name: Validate Factory V1 contracts, playable scene and visual slice
         run: |
           node scripts/validate_factory_v1.mjs
           node scripts/validate_factory_native.mjs
+          node scripts/validate_cocos_playable.mjs
       - name: Assert no rejected production coupling
         run: |
           ! grep -R "engine-v[234]" factory-native
           ! grep -R "WebView" factory-native/assets/scripts/domain factory-native/assets/scripts/cocos
           ! grep -R "document\.\|window\." factory-native/assets/scripts/domain
           test -f factory-native/package.json
+          test -f factory-native/assets/ReferenceGame01.scene
           test -d factory-native/assets
           test -d factory-native/settings
           echo FACTORY_NATIVE_BOUNDARY_PASS
@@ -50,5 +53,7 @@ jobs:
           retention-days: 7
           path: |
             evidence/native-visual-v1/*.png
+            factory-native/assets/ReferenceGame01.scene
+            factory-native/assets/ReferenceGame01.scene.meta
             factory-native/assets/resources/assets/**/*.png
             factory-native/assets/resources/scenes/*.scene.json
