@@ -7,7 +7,7 @@ import argparse, json
 
 W,H=1080,1920
 PHOTO_URLS={
- 'park':'https://images.unsplash.com/photo-1774866563481-d9a5793de1b7?auto=format&fit=crop&fm=jpg&q=78&w=1600',
+ 'park':'https://images.unsplash.com/photo-1686586445242-cbf8805306db?auto=format&fit=crop&fm=jpg&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&ixlib=rb-4.1.0&q=60&w=3000',
  'pool':'https://images.unsplash.com/photo-1674986225574-d00a626cc2db?auto=format&fit=crop&fm=jpg&q=78&w=1600',
  'table':'https://images.unsplash.com/photo-1519219788971-8d9797e0928e?auto=format&fit=crop&fm=jpg&q=78&w=1800',
 }
@@ -22,37 +22,50 @@ def photo(name,focus_y=.5):
   req=Request(PHOTO_URLS[name],headers={'User-Agent':'something-is-strange-build/1.0'}); raw=urlopen(req,timeout=25).read(); im=cover(Image.open(BytesIO(raw)),focus_y=focus_y)
   im=ImageEnhance.Contrast(im).enhance(1.06); im=ImageEnhance.Color(im).enhance(.96); return im
  except Exception as e:
-  print(f'PHOTO_FALLBACK {name}: {e}'); base=Image.new('RGBA',(W,H),(55,75,85,255)); return base
+  print(f'PHOTO_FALLBACK {name}: {e}'); return Image.new('RGBA',(W,H),(55,75,85,255))
 
 def park(out):
- im=photo('park',.50); tone=Image.new('RGBA',(W,H),(15,28,48,42)); im=Image.alpha_composite(im,tone); save(im,out/'extra-shadow/park.png')
+ im=photo('park',.54); im=Image.alpha_composite(im,Image.new('RGBA',(W,H),(13,24,38,30))); save(im,out/'extra-shadow/park.png')
 
-def person(shirt,pants,hair,flip=False):
- im=Image.new('RGBA',(260,620),(0,0,0,0)); d=ImageDraw.Draw(im); skin=(207,158,123,255)
- d.ellipse((65,560,125,602),fill=(15,18,24,70)); d.ellipse((138,560,198,602),fill=(15,18,24,70)); d.rounded_rectangle((80,378,118,574),16,fill=pants); d.rounded_rectangle((142,378,180,574),16,fill=pants); d.rounded_rectangle((57,185,203,410),42,fill=shirt); d.polygon([(60,225),(27,352),(60,365),(84,270)],fill=skin); d.polygon([(200,225),(233,350),(202,364),(178,270)],fill=skin); d.rectangle((112,146,148,203),fill=skin); d.ellipse((84,52,176,164),fill=skin); d.pieslice((80,42,180,145),180,360,fill=hair)
- # soft rim and slight camera blur to integrate with photo plate
- return im.filter(ImageFilter.GaussianBlur(.45)).transpose(Image.Transpose.FLIP_LEFT_RIGHT) if flip else im.filter(ImageFilter.GaussianBlur(.45))
+def person(*_args,**_kwargs):
+ # The validation plate already contains two real people. Keep actor slots transparent so
+ # gameplay/timeline structure stays unchanged while avoiding cartoon-over-photo compositing.
+ return Image.new('RGBA',(260,620),(0,0,0,0))
 
 def shadow(size,extra=False):
- w,h=size; m=Image.new('L',size,0); d=ImageDraw.Draw(m); cx=w*.5; d.ellipse((cx-46,52,cx+46,144),fill=155); d.polygon([(cx-52,132),(cx+55,132),(cx+78,h*.53),(cx+40,h*.63),(cx+24,h-34),(cx-8,h-24),(cx-18,h*.65),(cx-70,h*.55)],fill=155)
- if extra: d.polygon([(cx+36,h*.51),(w-20,h*.71),(w-32,h*.78),(cx+18,h*.61)],fill=145)
- m=m.filter(ImageFilter.GaussianBlur(24)); col=Image.new('RGBA',size,(9,13,19,0)); col.putalpha(m); return col
+ w,h=size; m=Image.new('L',size,0); d=ImageDraw.Draw(m); cx=w*.5; d.ellipse((cx-46,52,cx+46,144),fill=145); d.polygon([(cx-52,132),(cx+55,132),(cx+78,h*.53),(cx+40,h*.63),(cx+24,h-34),(cx-8,h-24),(cx-18,h*.65),(cx-70,h*.55)],fill=145)
+ if extra: d.polygon([(cx+36,h*.51),(w-20,h*.71),(w-32,h*.78),(cx+18,h*.61)],fill=138)
+ m=m.filter(ImageFilter.GaussianBlur(26)); col=Image.new('RGBA',size,(7,10,15,0)); col.putalpha(m); return col
 
 def pool(out):
- im=photo('pool',.58); # the source is an empty pool; deepen water and preserve lane perspective
- tint=Image.new('RGBA',(W,H),(8,86,142,26)); im=Image.alpha_composite(im,tint); save(im,out/'early-splash/pool.png')
- ball=Image.new('RGBA',(180,180),(0,0,0,0)); b=ImageDraw.Draw(ball); b.ellipse((13,16,167,170),fill=(240,82,39,255),outline=(116,40,24,220),width=5); b.pieslice((23,26,157,160),205,330,fill=(248,198,64,255)); b.ellipse((38,34,76,70),fill=(255,255,255,135)); save(q(ball),out/'early-splash/ball.png')
- sp=Image.new('RGBA',(520,430),(0,0,0,0)); s=ImageDraw.Draw(sp); s.polygon([(42,338),(92,238),(142,286),(178,145),(222,260),(262,74),(308,252),(364,126),(397,282),(458,205),(490,342)],fill=(218,250,255,225)); s.ellipse((45,278,490,414),fill=(172,235,249,190))
- for cx,cy,r in [(150,102,21),(252,40,25),(371,75,18),(82,170,15),(442,142,14),(316,30,10)]: s.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(240,254,255,245))
- save(q(sp.filter(ImageFilter.GaussianBlur(.65))),out/'early-splash/splash.png')
+ im=photo('pool',.58); im=Image.alpha_composite(im,Image.new('RGBA',(W,H),(8,86,142,26))); save(im,out/'early-splash/pool.png')
+ ball=Image.new('RGBA',(180,180),(0,0,0,0)); px=ball.load()
+ for y in range(180):
+  for x in range(180):
+   dx,dy=x-86,y-82; r=(dx*dx+dy*dy)**.5
+   if r<=76:
+    light=max(0,min(1,(1-r/76))); highlight=max(0,1-(((x-56)**2+(y-48)**2)**.5)/58); px[x,y]=(min(255,int(224+28*highlight)),int(68+38*light),int(33+16*light),255)
+ b=ImageDraw.Draw(ball); b.arc((10,10,166,166),12,345,fill=(105,40,27,210),width=5); b.arc((32,34,150,145),205,330,fill=(251,194,59,230),width=28); save(q(ball),out/'early-splash/ball.png')
+ sp=Image.new('RGBA',(520,430),(0,0,0,0)); s=ImageDraw.Draw(sp); s.ellipse((55,286,470,405),fill=(178,235,248,120)); s.polygon([(70,330),(116,222),(153,296),(191,126),(229,275),(264,58),(303,267),(355,111),(392,288),(452,196),(477,339)],fill=(224,251,255,195))
+ for cx,cy,r in [(150,102,18),(252,40,23),(371,75,16),(82,170,13),(442,142,12),(316,30,9),(205,86,8)]: s.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(245,255,255,225))
+ save(q(sp.filter(ImageFilter.GaussianBlur(1.1))),out/'early-splash/splash.png')
 
 def table(out):
- im=photo('table',.64); # crop keeps the wooden surface dominant and leaves clean wall space
- shade=Image.new('RGBA',(W,H),(28,20,18,18)); im=Image.alpha_composite(im,shade); save(im,out/'color-theft/table.png')
+ im=photo('table',.64); im=Image.alpha_composite(im,Image.new('RGBA',(W,H),(28,20,18,18))); save(im,out/'color-theft/table.png')
  def vase(color):
-  v=Image.new('RGBA',(300,560),(0,0,0,0)); x=ImageDraw.Draw(v); x.ellipse((42,500,258,548),fill=(10,8,8,72)); x.polygon([(112,34),(188,34),(194,105),(226,168),(246,430),(214,503),(86,503),(54,430),(74,168),(106,105)],fill=color,outline=(61,44,39,175)); x.rounded_rectangle((100,20,200,67),17,fill=tuple(min(255,c+18) for c in color[:3])+(255,)); x.polygon([(92,145),(114,116),(109,450),(89,437)],fill=(255,255,255,48)); return v.filter(ImageFilter.GaussianBlur(.25))
+  mask=Image.new('L',(300,560),0); md=ImageDraw.Draw(mask); md.polygon([(112,34),(188,34),(194,105),(226,168),(246,430),(214,503),(86,503),(54,430),(74,168),(106,105)],fill=255); md.rounded_rectangle((100,20,200,67),17,fill=255)
+  v=Image.new('RGBA',(300,560),(0,0,0,0)); base=color[:3]
+  for x in range(300):
+   nx=(x-150)/115; shade=.70+.30*max(0,1-nx*nx); hi=.23*max(0,1-abs(x-105)/38); c=tuple(min(255,int(ch*shade+255*hi)) for ch in base); ImageDraw.Draw(v).line((x,0,x,559),fill=c+(255,))
+  v.putalpha(mask.filter(ImageFilter.GaussianBlur(.35))); x=ImageDraw.Draw(v,'RGBA'); x.ellipse((42,500,258,548),fill=(10,8,8,55)); x.polygon([(94,145),(114,118),(109,444),(91,432)],fill=(255,255,255,48)); return v
  def ball(c):
-  b=Image.new('RGBA',(170,170),(0,0,0,0)); x=ImageDraw.Draw(b); x.ellipse((7,10,163,166),fill=c,outline=(70,45,40,180),width=4); x.ellipse((30,27,72,65),fill=(255,255,255,125)); return b
+  b=Image.new('RGBA',(170,170),(0,0,0,0)); px=b.load(); base=c[:3]
+  for y in range(170):
+   for x in range(170):
+    dx,dy=x-83,y-84; r=(dx*dx+dy*dy)**.5
+    if r<=77:
+     n=max(0,1-r/77); h=max(0,1-(((x-55)**2+(y-50)**2)**.5)/55); px[x,y]=tuple(min(255,int(ch*(.76+.24*n)+255*.22*h)) for ch in base)+(255,)
+  return b
  save(q(vase((215,207,181,255))),out/'color-theft/vase-pale.png'); save(q(vase((203,50,43,255))),out/'color-theft/vase-red.png'); save(q(ball((211,45,38,255))),out/'color-theft/ball-red.png'); save(q(ball((219,212,190,255))),out/'color-theft/ball-pale.png')
 
 def actor_state_at(actor,t,timeline):
@@ -99,4 +112,4 @@ def evidence(asset_root,scene_root,out):
 
 if __name__=='__main__':
  ap=argparse.ArgumentParser(); ap.add_argument('--output-root',default='factory-native/assets/resources/assets'); ap.add_argument('--scene-root',default='factory-native/assets/resources/scenes'); ap.add_argument('--evidence-dir',default='evidence/native-visual-v1'); a=ap.parse_args(); out=Path(a.output_root)
- park(out); save(q(person((189,83,51,255),(39,48,62,255),(47,31,25,255))),out/'extra-shadow/person-a.png'); save(q(person((47,110,132,255),(45,43,55,255),(31,26,23,255),True)),out/'extra-shadow/person-b.png'); save(q(shadow((360,520))),out/'extra-shadow/shadow-natural.png'); save(q(shadow((380,560),True)),out/'extra-shadow/shadow-impossible.png'); pool(out); table(out); evidence(out,Path(a.scene_root),Path(a.evidence_dir)); print('NATIVE_VISUAL_ASSETS_GENERATED_FROM_MANIFESTS')
+ park(out); save(person(),out/'extra-shadow/person-a.png'); save(person(),out/'extra-shadow/person-b.png'); save(q(shadow((360,520))),out/'extra-shadow/shadow-natural.png'); save(q(shadow((380,560),True)),out/'extra-shadow/shadow-impossible.png'); pool(out); table(out); evidence(out,Path(a.scene_root),Path(a.evidence_dir)); print('NATIVE_VISUAL_ASSETS_GENERATED_FROM_MANIFESTS')
