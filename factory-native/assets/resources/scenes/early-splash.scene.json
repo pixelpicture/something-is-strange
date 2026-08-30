@@ -10,28 +10,30 @@
   ],
   "actors": [
     { "id": "background", "z": 0, "x": 540, "y": 960, "initialState": "base", "states": { "base": { "assetId": "pool-bg" } } },
-    { "id": "ball", "z": 4, "x": 540, "y": 560, "initialState": "base", "states": { "base": { "assetId": "ball" } } },
+    { "id": "ball", "z": 4, "x": 540, "y": 1380, "initialState": "base", "states": { "base": { "assetId": "ball" } } },
     {
-      "id": "splashActor", "z": 3, "x": 540, "y": 1280, "initialState": "hidden",
+      "id": "splashActor", "z": 3, "x": 540, "y": 800, "initialState": "hidden",
       "states": { "hidden": { "assetId": "splash", "visible": false }, "shown": { "assetId": "splash", "visible": true } },
-      "semantic": { "id": "splash", "z": 3, "touchExpansionPx": 30,
+      "semantic": {
+        "id": "splash", "z": 3, "touchExpansionPx": 30,
         "hitPolygons": [
-          [[300,1220],[390,1120],[455,1210],[500,1050],[550,1190],[635,1070],[675,1210],[790,1160],[820,1360],[275,1360]],
-          [[420,1000],[475,940],[510,1030]],
-          [[620,990],[665,920],[705,1035]]
+          [[320,600],[360,690],[425,650],[460,825],[500,700],[540,920],[585,705],[640,870],[675,680],[735,745],[760,600]],
+          [[410,815],[445,850],[470,900],[450,940],[410,925]],
+          [[600,835],[635,875],[670,930],[700,900],[680,850]],
+          [[515,940],[540,1005],[570,950],[555,910]]
         ]
       }
     }
   ],
   "timeline": [
-    { "atMs": 500, "actorId": "ball", "command": "move", "value": { "x": 540, "y": 980, "durationMs": 2500 } },
+    { "atMs": 500, "actorId": "ball", "command": "move", "value": { "x": 540, "y": 650, "durationMs": 2500 } },
     { "atMs": 1900, "actorId": "splashActor", "command": "state", "value": "shown" }
   ],
   "anomalyAtMs": 1900,
   "answerObjectIds": ["splash"],
   "humanIntent": {
     "normalExpectation": "A ball is visibly falling toward still pool water.",
-    "impossibleEvent": "A coherent splash appears before the ball reaches the water.",
+    "impossibleEvent": "A coherent splash appears while the ball is still visibly above the water.",
     "visualQuestion": "What happened before its cause?"
   }
 }
