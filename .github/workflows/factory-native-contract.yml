@@ -61,3 +61,68 @@ jobs:
             factory-native/assets/ReferenceGame01.scene.meta
             factory-native/assets/resources/assets/**/*.png
             factory-native/assets/resources/scenes/*.scene.json
+
+  creator-proof:
+    needs: contract
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+      - name: Decide whether to run expensive Creator proof
+        id: marker
+        shell: pwsh
+        run: |
+          $msg = git log -1 --pretty=%B
+          if ($msg -match '\[creator-proof\]') { 'run=true' >> $env:GITHUB_OUTPUT } else { 'run=false' >> $env:GITHUB_OUTPUT }
+      - name: Restore Cocos Creator 3.8.8 cache
+        if: steps.marker.outputs.run == 'true'
+        uses: actions/cache@v4
+        with:
+          path: .ci/cocos-3.8.8
+          key: cocos-3.8.8-win-010512-v1
+      - name: Install official Cocos Creator 3.8.8
+        if: steps.marker.outputs.run == 'true'
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:GITHUB_WORKSPACE '.ci\cocos-3.8.8'
+          $exe = Get-ChildItem -Path $root -Filter CocosCreator.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) {
+            New-Item -ItemType Directory -Force -Path $root | Out-Null
+            $zip = Join-Path $env:RUNNER_TEMP 'CocosCreator-v3.8.8-win-010512.zip'
+            Invoke-WebRequest -Uri 'https://download.cocos.org/CocosCreator/v3.8.8/CocosCreator-v3.8.8-win-010512.zip' -OutFile $zip
+            Expand-Archive -Path $zip -DestinationPath $root -Force
+          }
+          $exe = Get-ChildItem -Path $root -Filter CocosCreator.exe -Recurse | Select-Object -First 1
+          if (-not $exe) { throw 'CocosCreator.exe not found after extraction' }
+          "COCOS_EXE=$($exe.FullName)" >> $env:GITHUB_ENV
+      - name: Build real ByteDance mini-game with Creator 3.8.8
+        if: steps.marker.outputs.run == 'true'
+        shell: pwsh
+        run: |
+          $project = Join-Path $env:GITHUB_WORKSPACE 'factory-native'
+          $buildArgs = 'platform=bytedance-mini-game;debug=true;buildPath=project://build;startScene=53cbf133-47bb-4e38-99db-4d81319f9e57;name=SomethingIsStrange;logDest=project://creator-build.log'
+          $p = Start-Process -FilePath $env:COCOS_EXE -ArgumentList @('--project', $project, '--build', $buildArgs, '--force') -Wait -PassThru
+          Write-Host "Cocos exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 36) {
+            if (Test-Path "$project\creator-build.log") { Get-Content "$project\creator-build.log" -Tail 300 }
+            throw "Cocos Creator build failed with exit code $($p.ExitCode)"
+          }
+          $game = Get-ChildItem -Path "$project\build" -Filter game.json -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $game) {
+            if (Test-Path "$project\creator-build.log") { Get-Content "$project\creator-build.log" -Tail 300 }
+            throw 'ByteDance build completed without game.json'
+          }
+          Write-Host "BYTE_DANCE_BUILD_ROOT=$($game.Directory.FullName)"
+      - name: Upload real Creator build evidence
+        if: steps.marker.outputs.run == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cocos-creator-3.8.8-bytedance-proof
+          if-no-files-found: warn
+          retention-days: 7
+          path: |
+            factory-native/build/**
+            factory-native/creator-build.log
