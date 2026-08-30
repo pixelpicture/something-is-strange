@@ -1,0 +1,34 @@
+name: Factory Native Contract V1
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'factory-native/**'
+      - 'factory/**'
+      - 'scripts/validate_factory_native.mjs'
+      - 'scripts/validate_factory_v1.mjs'
+      - '.github/workflows/factory-native-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Factory V1 contracts
+        run: |
+          node scripts/validate_factory_v1.mjs
+          node scripts/validate_factory_native.mjs
+      - name: Assert no rejected production coupling
+        run: |
+          ! grep -R "engine-v[234]" factory-native
+          ! grep -R "WebView" factory-native/domain factory-native/cocos
+          ! grep -R "document\.\|window\." factory-native/domain
+          echo FACTORY_NATIVE_BOUNDARY_PASS
