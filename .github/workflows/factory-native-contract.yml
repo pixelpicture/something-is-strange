@@ -67,14 +67,14 @@ jobs:
             factory-native/assets/resources/scenes/*.scene.json
 
   creator-proof:
-    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.creator_proof == true) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.creator_proof == true }}
     needs: contract
     runs-on: macos-15
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
       - name: Restore Cocos Creator 3.8.8 cache
         uses: actions/cache@v4
