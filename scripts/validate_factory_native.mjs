@@ -8,7 +8,7 @@ assert.equal(scenes.length,3);
 assert.equal(new Set(scenes.map(s=>s.id)).size,3);
 
 const pkg=JSON.parse(fs.readFileSync(`${ROOT}/package.json`,'utf8'));
-assert.equal(pkg.creator.version,'3.8.9');
+assert.equal(pkg.creator.version,'3.8.8');
 assert.equal(pkg.name,'something-is-strange-reference');
 const settings=JSON.parse(fs.readFileSync(`${ROOT}/settings/project.json`,'utf8'));
 assert.equal(settings['design-resolution-width'],1080);
@@ -42,9 +42,12 @@ const ys=shadow.hitPolygons[0].map(p=>p[1]);
 assert.ok(Math.max(...ys)-Math.min(...ys)>=400,'full shadow geometry must be tappable');
 
 const domainDir=`${ROOT}/assets/scripts/domain`;
-const domainFiles=['PerceptionScore.ts','SemanticHit.ts','Runtime.ts','SceneManifest.ts','Session.ts'];
+const domainFiles=['PerceptionScore.ts','SemanticHit.ts','Runtime.ts','SceneManifest.ts','Session.ts','CoordinateSpace.ts'];
 const domain=domainFiles.map(x=>fs.readFileSync(`${domainDir}/${x}`,'utf8')).join('\n');
 for(const forbidden of ["from 'cc'",'document.','window.','WebView','android.'])assert.ok(!domain.includes(forbidden),`domain leaked platform dependency ${forbidden}`);
+const coord=fs.readFileSync(`${domainDir}/CoordinateSpace.ts`,'utf8');
+assert.ok(coord.includes('origin at bottom-left'));
+assert.ok(coord.includes('design.width / viewport.width'));
 
 for(const required of [
   `${ROOT}/assets/scripts/cocos/ReferenceGameController.ts`,
@@ -60,12 +63,15 @@ for(const required of [
 const controller=fs.readFileSync(`${ROOT}/assets/scripts/cocos/ReferenceGameController.ts`,'utf8');
 assert.ok(controller.includes("from 'cc'"));
 assert.ok(controller.includes('semanticHit'));
-assert.ok(controller.includes('scoreSession'));
+assert.ok(controller.includes('screenToDesign'));
+assert.ok(controller.includes('view.getVisibleSize'));
 const renderer=fs.readFileSync(`${ROOT}/assets/scripts/cocos/LayeredSceneRenderer.ts`,'utf8');
 assert.ok(renderer.includes('LayeredSceneManifest'));
 assert.ok(renderer.includes('manifest.timeline'));
 const flow=fs.readFileSync(`${ROOT}/assets/scripts/cocos/ReferenceGameFlow.ts`,'utf8');
 assert.ok(flow.includes("['extra-shadow','early-splash','color-theft']"));
+assert.ok(flow.includes('controller?.configure'));
+assert.ok(flow.includes('markAnomalyVisible'));
 assert.ok(flow.includes('session_result'));
 const visual=fs.readFileSync(`${ROOT}/VISUAL_PIPELINE_V1.md`,'utf8');
 for(const phrase of ['stylized editorial illustration','any visible part','Machine gates cannot certify recognizability'])assert.ok(visual.includes(phrase),`visual policy missing ${phrase}`);
