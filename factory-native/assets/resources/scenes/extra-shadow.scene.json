@@ -12,9 +12,9 @@
   ],
   "actors": [
     { "id": "background", "z": 0, "x": 540, "y": 960, "initialState": "base", "states": { "base": { "assetId": "park-bg" } } },
-    { "id": "shadowA", "z": 2, "x": 600, "y": 630, "initialState": "base", "states": { "base": { "assetId": "shadow-natural" } } },
-    { "id": "shadowB", "z": 2, "x": 790, "y": 630, "initialState": "base", "states": { "base": { "assetId": "shadow-natural" } } },
-    { "id": "impossibleShadow", "z": 2, "x": 790, "y": 600, "initialState": "hidden", "states": { "hidden": { "assetId": "shadow-impossible", "visible": false }, "shown": { "assetId": "shadow-impossible", "visible": true } }, "semantic": { "id": "impossible_shadow", "z": 2, "touchExpansionPx": 28, "hitPolygons": [[[650,315],[785,315],[935,430],[945,505],[820,835],[775,880],[695,880],[635,820],[620,620]]] } },
+    { "id": "shadowA", "z": 2, "x": 570, "y": 330, "initialState": "base", "states": { "base": { "assetId": "shadow-natural" } } },
+    { "id": "shadowB", "z": 2, "x": 760, "y": 330, "initialState": "base", "states": { "base": { "assetId": "shadow-natural" } } },
+    { "id": "impossibleShadow", "z": 2, "x": 860, "y": 330, "initialState": "hidden", "states": { "hidden": { "assetId": "shadow-impossible", "visible": false }, "shown": { "assetId": "shadow-impossible", "visible": true } }, "semantic": { "id": "impossible_shadow", "z": 2, "touchExpansionPx": 28, "hitPolygons": [[[720,45],[855,45],[1005,160],[1015,235],[890,565],[845,610],[765,610],[705,550],[690,350]]] } },
     { "id": "personA", "z": 3, "x": 380, "y": 900, "initialState": "base", "states": { "base": { "assetId": "person-a" } } },
     { "id": "personB", "z": 3, "x": 650, "y": 900, "initialState": "base", "states": { "base": { "assetId": "person-b" } } }
   ],
@@ -22,5 +22,5 @@
   "anomalyAtMs": 1650,
   "evidenceBaselineAtMs": 850,
   "answerObjectIds": ["impossible_shadow"],
-  "humanIntent": { "normalExpectation": "Two people under one dominant light source cast two readable shadows.", "impossibleEvent": "A third full cast shadow appears with no person attached.", "visualQuestion": "Which shadow has no owner?" }
+  "humanIntent": { "normalExpectation": "Two people under one dominant light source cast two readable shadows on the path.", "impossibleEvent": "A third full cast shadow appears on the path with no person attached.", "visualQuestion": "Which shadow has no owner?" }
 }
