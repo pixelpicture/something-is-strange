@@ -2,8 +2,24 @@ name: Android Device Lab
 on:
   push:
     branches: [ feature/mvp-physical-proof ]
+    paths-ignore:
+      - 'factory-native/**'
+      - 'factory/**'
+      - 'FACTORY_ARCHITECTURE_V1.md'
+      - 'PROJECT_STATE.md'
+      - 'scripts/validate_factory_native.mjs'
+      - 'scripts/validate_factory_v1.mjs'
+      - '.github/workflows/factory-native-contract.yml'
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - 'factory-native/**'
+      - 'factory/**'
+      - 'FACTORY_ARCHITECTURE_V1.md'
+      - 'PROJECT_STATE.md'
+      - 'scripts/validate_factory_native.mjs'
+      - 'scripts/validate_factory_v1.mjs'
+      - '.github/workflows/factory-native-contract.yml'
   workflow_dispatch:
 env:
   SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
