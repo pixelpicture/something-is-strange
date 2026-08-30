@@ -55,7 +55,7 @@ def table(out):
  save(q(vase((212,204,180,255))),out/'color-theft/vase-pale.png'); save(q(vase((198,62,52,255))),out/'color-theft/vase-red.png'); save(q(ball((206,58,50,255))),out/'color-theft/ball-red.png'); save(q(ball((216,209,188,255))),out/'color-theft/ball-pale.png')
 
 def actor_state_at(actor,t,timeline):
- state=actor['initialState']; x=float(actor['x']); y=float(actor['y']); moves=[]
+ state=actor['initialState']; x=float(actor['x']); y=float(actor['y'])
  for e in sorted((e for e in timeline if e['actorId']==actor['id']),key=lambda e:e['atMs']):
   at=e['atMs']; cmd=e['command']
   if cmd=='state' and t>=at: state=str(e['value'])
@@ -66,22 +66,22 @@ def actor_state_at(actor,t,timeline):
     f=(t-at)/v['durationMs']; x=sx+(float(v['x'])-sx)*f; y=sy+(float(v['y'])-sy)*f
  return state,x,y
 
-def render_manifest(manifest,root,t):
+def render_manifest(manifest,asset_root,t):
  assets={a['id']:a for a in manifest['assets']}; canvas=Image.new('RGBA',(W,H),(0,0,0,255))
  for actor in sorted(manifest['actors'],key=lambda a:a['z']):
   state,x,y=actor_state_at(actor,t,manifest['timeline']); st=actor['states'][state]
   if st.get('visible',True) is False: continue
-  asset=assets[st['assetId']]; sprite=Image.open(root/asset['path']).convert('RGBA'); scale=float(actor.get('scale',1));
+  asset=assets[st['assetId']]; sprite=Image.open(asset_root.parent/asset['path']).convert('RGBA'); scale=float(actor.get('scale',1))
   if scale!=1: sprite=sprite.resize((round(sprite.width*scale),round(sprite.height*scale)),Image.Resampling.LANCZOS)
   if actor.get('rotation',0): sprite=sprite.rotate(-float(actor['rotation']),expand=True,resample=Image.Resampling.BICUBIC)
   left=round(x-sprite.width/2); top=round(H-y-sprite.height/2); canvas.alpha_composite(sprite,(left,top))
  return canvas
 
-def evidence(root,scene_root,out):
+def evidence(asset_root,scene_root,out):
  out.mkdir(parents=True,exist_ok=True)
  for p in sorted(scene_root.glob('*.scene.json')):
   m=json.loads(p.read_text()); anomaly=m['anomalyAtMs']; end=max([anomaly]+[e['atMs']+(e.get('value',{}).get('durationMs',0) if isinstance(e.get('value'),dict) else 0) for e in m['timeline']])
-  for label,t in [('before',max(0,anomaly-250)),('anomaly',anomaly),('after',end+100)]: save(q(render_manifest(m,root,t)),out/f"{m['id']}-{label}.png")
+  for label,t in [('before',max(0,anomaly-250)),('anomaly',anomaly),('after',end+100)]: save(q(render_manifest(m,asset_root,t)),out/f"{m['id']}-{label}.png")
 
 if __name__=='__main__':
  ap=argparse.ArgumentParser(); ap.add_argument('--output-root',default='factory-native/assets/resources/assets'); ap.add_argument('--scene-root',default='factory-native/assets/resources/scenes'); ap.add_argument('--evidence-dir',default='evidence/native-visual-v1'); a=ap.parse_args(); out=Path(a.output_root)
