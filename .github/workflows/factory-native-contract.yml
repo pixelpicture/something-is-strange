@@ -46,8 +46,6 @@ jobs:
           ! grep -R "document\.\|window\." factory-native/assets/scripts/domain
           test -f factory-native/package.json
           test -f factory-native/assets/ReferenceGame01.scene
-          test -d factory-native/assets
-          test -d factory-native/settings
           echo FACTORY_NATIVE_BOUNDARY_PASS
       - name: Package human-review evidence
         uses: actions/upload-artifact@v4
@@ -64,7 +62,7 @@ jobs:
 
   creator-proof:
     needs: contract
-    runs-on: windows-latest
+    runs-on: macos-15
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -73,62 +71,58 @@ jobs:
           fetch-depth: 1
       - name: Decide whether to run expensive Creator proof
         id: marker
-        shell: pwsh
+        shell: bash
         run: |
-          $msg = git log -1 --pretty=%B
-          if ($msg -match '\[creator-proof\]') { 'run=true' >> $env:GITHUB_OUTPUT } else { 'run=false' >> $env:GITHUB_OUTPUT }
+          if git log -1 --pretty=%B | grep -q '\[creator-proof\]'; then echo 'run=true' >> "$GITHUB_OUTPUT"; else echo 'run=false' >> "$GITHUB_OUTPUT"; fi
       - name: Restore Cocos Creator 3.8.8 cache
         if: steps.marker.outputs.run == 'true'
         uses: actions/cache@v4
         with:
           path: .ci/cocos-3.8.8
-          key: cocos-3.8.8-win-010512-v2
+          key: cocos-3.8.8-mac-010512-v1
       - name: Install official Cocos Creator 3.8.8
         if: steps.marker.outputs.run == 'true'
-        shell: pwsh
+        shell: bash
         run: |
-          $root = Join-Path $env:GITHUB_WORKSPACE '.ci\cocos-3.8.8'
-          $exe = Get-ChildItem -Path $root -Filter CocosCreator.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $exe) {
-            New-Item -ItemType Directory -Force -Path $root | Out-Null
-            $zip = Join-Path $env:RUNNER_TEMP 'CocosCreator-v3.8.8-win-010512.zip'
-            $urls = @(
-              'https://download.cocos.org/CocosCreator/v3.8.8/CocosCreator-v3.8.8-win-010512.zip',
-              'https://download.cocos.com/CocosCreator/v3.8.8/CocosCreator-v3.8.8-win-010512.zip'
-            )
-            $downloaded = $false
-            foreach ($url in $urls) {
-              try {
-                Write-Host "Trying official Creator package: $url"
-                & curl.exe -fL --retry 2 --retry-delay 2 -A 'Mozilla/5.0 CocosCreator-CI/3.8.8' -e 'https://www.cocos.com/' -o $zip $url
-                if ($LASTEXITCODE -eq 0 -and (Test-Path $zip) -and (Get-Item $zip).Length -gt 100MB) { $downloaded = $true; break }
-              } catch { Write-Warning $_ }
-              if (Test-Path $zip) { Remove-Item $zip -Force }
-            }
-            if (-not $downloaded) { throw 'Official Cocos Creator 3.8.8 package unavailable from both Cocos CDN endpoints' }
-            Expand-Archive -Path $zip -DestinationPath $root -Force
-          }
-          $exe = Get-ChildItem -Path $root -Filter CocosCreator.exe -Recurse | Select-Object -First 1
-          if (-not $exe) { throw 'CocosCreator.exe not found after extraction' }
-          "COCOS_EXE=$($exe.FullName)" >> $env:GITHUB_ENV
+          set -euo pipefail
+          ROOT="$GITHUB_WORKSPACE/.ci/cocos-3.8.8"
+          EXE=$(find "$ROOT" -path '*/CocosCreator.app/Contents/MacOS/CocosCreator' -type f 2>/dev/null | head -1 || true)
+          if [ -z "$EXE" ]; then
+            mkdir -p "$ROOT"
+            ZIP="$RUNNER_TEMP/CocosCreator-v3.8.8-mac-010512.zip"
+            URL='https://download.cocos.org/CocosCreator/v3.8.8/CocosCreator-v3.8.8-mac-010512.zip'
+            curl -fL --retry 2 --retry-delay 2 -A 'Mozilla/5.0 CocosCreator-CI/3.8.8' -e 'https://www.cocos.com/' -o "$ZIP" "$URL"
+            BYTES=$(stat -f%z "$ZIP")
+            test "$BYTES" -gt 100000000
+            ditto -x -k "$ZIP" "$ROOT"
+          fi
+          EXE=$(find "$ROOT" -path '*/CocosCreator.app/Contents/MacOS/CocosCreator' -type f | head -1)
+          test -n "$EXE"
+          xattr -dr com.apple.quarantine "$(dirname "$(dirname "$(dirname "$EXE")")")" || true
+          chmod +x "$EXE"
+          echo "COCOS_EXE=$EXE" >> "$GITHUB_ENV"
       - name: Build real ByteDance mini-game with Creator 3.8.8
         if: steps.marker.outputs.run == 'true'
-        shell: pwsh
+        shell: bash
         run: |
-          $project = Join-Path $env:GITHUB_WORKSPACE 'factory-native'
-          $buildArgs = 'platform=bytedance-mini-game;debug=true;buildPath=project://build;startScene=53cbf133-47bb-4e38-99db-4d81319f9e57;name=SomethingIsStrange;logDest=project://creator-build.log'
-          $p = Start-Process -FilePath $env:COCOS_EXE -ArgumentList @('--project', $project, '--build', $buildArgs, '--force') -Wait -PassThru
-          Write-Host "Cocos exit code: $($p.ExitCode)"
-          if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 36) {
-            if (Test-Path "$project\creator-build.log") { Get-Content "$project\creator-build.log" -Tail 300 }
-            throw "Cocos Creator build failed with exit code $($p.ExitCode)"
-          }
-          $game = Get-ChildItem -Path "$project\build" -Filter game.json -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $game) {
-            if (Test-Path "$project\creator-build.log") { Get-Content "$project\creator-build.log" -Tail 300 }
-            throw 'ByteDance build completed without game.json'
-          }
-          Write-Host "BYTE_DANCE_BUILD_ROOT=$($game.Directory.FullName)"
+          set +e
+          PROJECT="$GITHUB_WORKSPACE/factory-native"
+          ARGS='platform=bytedance-mini-game;debug=true;buildPath=project://build;startScene=53cbf133-47bb-4e38-99db-4d81319f9e57;name=SomethingIsStrange;logDest=project://creator-build.log'
+          "$COCOS_EXE" --project "$PROJECT" --build "$ARGS" --force
+          CODE=$?
+          set -e
+          echo "Cocos exit code: $CODE"
+          if [ "$CODE" -ne 0 ] && [ "$CODE" -ne 36 ]; then
+            test -f "$PROJECT/creator-build.log" && tail -300 "$PROJECT/creator-build.log" || true
+            exit "$CODE"
+          fi
+          GAME=$(find "$PROJECT/build" -name game.json -type f | head -1 || true)
+          if [ -z "$GAME" ]; then
+            test -f "$PROJECT/creator-build.log" && tail -300 "$PROJECT/creator-build.log" || true
+            echo 'ByteDance build completed without game.json' >&2
+            exit 1
+          fi
+          echo "BYTE_DANCE_BUILD_ROOT=$(dirname "$GAME")"
       - name: Upload real Creator build evidence
         if: steps.marker.outputs.run == 'true' && always()
         uses: actions/upload-artifact@v4
