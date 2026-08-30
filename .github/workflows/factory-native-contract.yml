@@ -15,7 +15,7 @@ permissions:
 jobs:
   contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,6 +35,10 @@ jobs:
           node scripts/validate_factory_v1.mjs
           node scripts/validate_factory_native.mjs
           node scripts/validate_cocos_playable.mjs
+      - name: Typecheck against Cocos Creator 3.8.8 API
+        run: |
+          npm install --prefix factory-native --no-save --no-audit --no-fund typescript@5.4.5 @cocos/creator-types@3.8.8
+          ./factory-native/node_modules/.bin/tsc -p factory-native/tsconfig.json
       - name: Assert no rejected production coupling
         run: |
           ! grep -R "engine-v[234]" factory-native
