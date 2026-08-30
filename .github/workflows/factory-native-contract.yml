@@ -52,6 +52,7 @@ jobs:
           ! grep -R "document\.\|window\." factory-native/assets/scripts/domain
           test -f factory-native/package.json
           test -f factory-native/assets/ReferenceGame01.scene
+          test -f factory-native/settings/v2/packages/project.json
           echo FACTORY_NATIVE_BOUNDARY_PASS
       - name: Package human-review evidence
         uses: actions/upload-artifact@v4
@@ -67,14 +68,14 @@ jobs:
             factory-native/assets/resources/scenes/*.scene.json
 
   creator-proof:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.creator_proof == true }}
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.creator_proof == true) }}
     needs: contract
     runs-on: macos-15
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 1
       - name: Restore Cocos Creator 3.8.8 cache
         uses: actions/cache@v4
@@ -121,6 +122,9 @@ jobs:
             echo 'ByteDance build completed without game.json' >&2
             exit 1
           fi
+          SETTINGS=$(find "$PROJECT/build" -path '*/src/settings.json' -type f | head -1 || true)
+          test -n "$SETTINGS"
+          node -e "const s=require(process.argv[1]); const d=s.screen&&s.screen.designResolution; if(!d||d.width!==1080||d.height!==1920) { console.error('BUILT_DESIGN_RESOLUTION_FAIL',d); process.exit(1) } console.log('BUILT_DESIGN_RESOLUTION_PASS',d)" "$SETTINGS"
           echo "BYTE_DANCE_BUILD_ROOT=$(dirname "$GAME")"
       - name: Upload real Creator build evidence
         if: always()
