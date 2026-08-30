@@ -31,11 +31,28 @@ def person(*_args,**_kwargs):
  return Image.new('RGBA',(260,620),(0,0,0,0))
 
 def shadow(size,extra=False):
- w,h=size; m=Image.new('L',size,0); d=ImageDraw.Draw(m); cx=w*.5
- d.ellipse((cx-46,52,cx+46,144),fill=225)
- d.polygon([(cx-52,132),(cx+55,132),(cx+78,h*.53),(cx+40,h*.63),(cx+24,h-34),(cx-8,h-24),(cx-18,h*.65),(cx-70,h*.55)],fill=225)
- if extra: d.polygon([(cx+36,h*.51),(w-20,h*.71),(w-32,h*.78),(cx+18,h*.61)],fill=215)
- m=m.filter(ImageFilter.GaussianBlur(16)); col=Image.new('RGBA',size,(5,7,10,0)); col.putalpha(m); return col
+ w,h=size; cx=w*.58
+ # A cast shadow should lie on the path, not stand up like a black person.
+ # The feet/contact point is near the light-facing end; the body is strongly
+ # foreshortened and projects diagonally down-left, consistent across actors.
+ m=Image.new('L',size,0); d=ImageDraw.Draw(m)
+ d.ellipse((cx-34,106,cx-6,156),fill=168)
+ d.ellipse((cx+4,104,cx+32,156),fill=168)
+ d.polygon([(cx-30,142),(cx+28,142),(cx+5,230),(cx-55,300),(cx-105,365),(cx-147,412),(cx-176,398),(cx-146,350),(cx-92,287),(cx-39,218)],fill=128)
+ d.polygon([(cx+10,148),(cx+34,152),(cx+12,232),(cx-33,293),(cx-62,280),(cx-20,219)],fill=112)
+ d.polygon([(cx-155,360),(cx-106,326),(cx-56,285),(cx-8,239),(cx+9,265),(cx-34,316),(cx-91,378),(cx-154,417)],fill=124)
+ head_shift=12 if extra else 0
+ d.ellipse((cx-196-head_shift,384+head_shift*.25,cx-116,442+head_shift*.25),fill=132)
+ # Broad penumbra keeps the projection embedded in the photographed surface.
+ pen=m.filter(ImageFilter.GaussianBlur(16))
+ # Only the immediate foot contact gets a tighter, darker core.
+ contact=Image.new('L',size,0); c=ImageDraw.Draw(contact)
+ c.ellipse((cx-38,112,cx+35,165),fill=66)
+ c.polygon([(cx-31,145),(cx+31,145),(cx+10,215),(cx-33,246),(cx-52,218)],fill=56)
+ contact=contact.filter(ImageFilter.GaussianBlur(6))
+ from PIL import ImageChops
+ alpha=ImageChops.add(pen,contact)
+ col=Image.new('RGBA',size,(20,23,24,0)); col.putalpha(alpha); return col
 
 def pool(out):
  im=photo('pool',.58); im=Image.alpha_composite(im,Image.new('RGBA',(W,H),(8,86,142,26))); save(im,out/'early-splash/pool.png')
