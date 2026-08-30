@@ -1,1 +1,49 @@
-{"schemaVersion":1,"id":"extra-shadow","mechanic":"anomaly_presence","canvas":{"width":1080,"height":1920},"assets":[{"id":"park-bg","role":"background","path":"assets/extra-shadow/park.webp","width":1080,"height":1920},{"id":"person-a","role":"actor","path":"assets/extra-shadow/person-a.webp","width":260,"height":620},{"id":"person-b","role":"actor","path":"assets/extra-shadow/person-b.webp","width":260,"height":620},{"id":"shadow-natural","role":"actor","path":"assets/extra-shadow/shadow-natural.webp","width":360,"height":520},{"id":"shadow-impossible","role":"effect","path":"assets/extra-shadow/shadow-impossible.webp","width":380,"height":560}],"actors":[{"id":"background","z":0,"x":540,"y":960,"initialState":"base","states":{"base":{"assetId":"park-bg"}}},{"id":"personA","z":3,"x":410,"y":1020,"initialState":"base","states":{"base":{"assetId":"person-a"}}},{"id":"personB","z":3,"x":670,"y":1020,"initialState":"base","states":{"base":{"assetId":"person-b"}}},{"id":"shadowA","z":2,"x":360,"y":1290,"initialState":"base","states":{"base":{"assetId":"shadow-natural"}}},{"id":"shadowB","z":2,"x":650,"y":1290,"initialState":"base","states":{"base":{"assetId":"shadow-natural"}}},{"id":"impossibleShadow","z":2,"x":805,"y":1320,"initialState":"hidden","states":{"hidden":{"assetId":"shadow-impossible","visible":false},"shown":{"assetId":"shadow-impossible","visible":true}},"semantic":{"id":"impossible_shadow","z":2,"touchExpansionPx":28,"hitPolygons":[[[665,1070],[770,1040],[945,1480],[820,1530],[720,1390]]]}}}],"timeline":[{"atMs":1650,"actorId":"impossibleShadow","command":"state","value":"shown"}],"anomalyAtMs":1650,"answerObjectIds":["impossible_shadow"],"humanIntent":{"normalExpectation":"Two people under one dominant light source cast two readable shadows.","impossibleEvent":"A third full cast shadow appears with no person attached.","visualQuestion":"Which shadow has no owner?"}}
+{
+  "schemaVersion": 1,
+  "id": "extra-shadow",
+  "mechanic": "anomaly_presence",
+  "canvas": { "width": 1080, "height": 1920 },
+  "assets": [
+    { "id": "park-bg", "role": "background", "path": "assets/extra-shadow/park.webp", "width": 1080, "height": 1920 },
+    { "id": "person-a", "role": "actor", "path": "assets/extra-shadow/person-a.webp", "width": 260, "height": 620 },
+    { "id": "person-b", "role": "actor", "path": "assets/extra-shadow/person-b.webp", "width": 260, "height": 620 },
+    { "id": "shadow-natural", "role": "actor", "path": "assets/extra-shadow/shadow-natural.webp", "width": 360, "height": 520 },
+    { "id": "shadow-impossible", "role": "effect", "path": "assets/extra-shadow/shadow-impossible.webp", "width": 380, "height": 560 }
+  ],
+  "actors": [
+    { "id": "background", "z": 0, "x": 540, "y": 960, "initialState": "base", "states": { "base": { "assetId": "park-bg" } } },
+    { "id": "personA", "z": 3, "x": 410, "y": 1020, "initialState": "base", "states": { "base": { "assetId": "person-a" } } },
+    { "id": "personB", "z": 3, "x": 670, "y": 1020, "initialState": "base", "states": { "base": { "assetId": "person-b" } } },
+    { "id": "shadowA", "z": 2, "x": 360, "y": 1290, "initialState": "base", "states": { "base": { "assetId": "shadow-natural" } } },
+    { "id": "shadowB", "z": 2, "x": 650, "y": 1290, "initialState": "base", "states": { "base": { "assetId": "shadow-natural" } } },
+    {
+      "id": "impossibleShadow",
+      "z": 2,
+      "x": 805,
+      "y": 1320,
+      "initialState": "hidden",
+      "states": {
+        "hidden": { "assetId": "shadow-impossible", "visible": false },
+        "shown": { "assetId": "shadow-impossible", "visible": true }
+      },
+      "semantic": {
+        "id": "impossible_shadow",
+        "z": 2,
+        "touchExpansionPx": 28,
+        "hitPolygons": [
+          [[665,1070],[770,1040],[945,1480],[820,1530],[720,1390]]
+        ]
+      }
+    }
+  ],
+  "timeline": [
+    { "atMs": 1650, "actorId": "impossibleShadow", "command": "state", "value": "shown" }
+  ],
+  "anomalyAtMs": 1650,
+  "answerObjectIds": ["impossible_shadow"],
+  "humanIntent": {
+    "normalExpectation": "Two people under one dominant light source cast two readable shadows.",
+    "impossibleEvent": "A third full cast shadow appears with no person attached.",
+    "visualQuestion": "Which shadow has no owner?"
+  }
+}
