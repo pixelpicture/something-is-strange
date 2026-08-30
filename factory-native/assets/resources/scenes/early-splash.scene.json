@@ -4,27 +4,17 @@
   "mechanic": "timing_violation",
   "canvas": { "width": 1080, "height": 1920 },
   "assets": [
-    { "id": "pool-bg", "role": "background", "path": "assets/early-splash/pool.webp", "width": 1080, "height": 1920 },
-    { "id": "ball", "role": "actor", "path": "assets/early-splash/ball.webp", "width": 180, "height": 180 },
-    { "id": "splash", "role": "effect", "path": "assets/early-splash/splash.webp", "width": 520, "height": 430 }
+    { "id": "pool-bg", "role": "background", "path": "assets/early-splash/pool.png", "width": 1080, "height": 1920 },
+    { "id": "ball", "role": "actor", "path": "assets/early-splash/ball.png", "width": 180, "height": 180 },
+    { "id": "splash", "role": "effect", "path": "assets/early-splash/splash.png", "width": 520, "height": 430 }
   ],
   "actors": [
     { "id": "background", "z": 0, "x": 540, "y": 960, "initialState": "base", "states": { "base": { "assetId": "pool-bg" } } },
     { "id": "ball", "z": 4, "x": 540, "y": 560, "initialState": "base", "states": { "base": { "assetId": "ball" } } },
     {
-      "id": "splashActor",
-      "z": 3,
-      "x": 540,
-      "y": 1280,
-      "initialState": "hidden",
-      "states": {
-        "hidden": { "assetId": "splash", "visible": false },
-        "shown": { "assetId": "splash", "visible": true }
-      },
-      "semantic": {
-        "id": "splash",
-        "z": 3,
-        "touchExpansionPx": 30,
+      "id": "splashActor", "z": 3, "x": 540, "y": 1280, "initialState": "hidden",
+      "states": { "hidden": { "assetId": "splash", "visible": false }, "shown": { "assetId": "splash", "visible": true } },
+      "semantic": { "id": "splash", "z": 3, "touchExpansionPx": 30,
         "hitPolygons": [
           [[300,1220],[390,1120],[455,1210],[500,1050],[550,1190],[635,1070],[675,1210],[790,1160],[820,1360],[275,1360]],
           [[420,1000],[475,940],[510,1030]],

@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
 const ROOT='factory-native';
-const scenePaths=['extra-shadow','early-splash','color-theft'].map(x=>`${ROOT}/assets/resources/scenes/${x}.scene.json`);
+const RES=`${ROOT}/assets/resources`;
+const scenePaths=['extra-shadow','early-splash','color-theft'].map(x=>`${RES}/scenes/${x}.scene.json`);
 const scenes=scenePaths.map(p=>JSON.parse(fs.readFileSync(p,'utf8')));
 assert.equal(scenes.length,3);
 assert.equal(new Set(scenes.map(s=>s.id)).size,3);
@@ -22,8 +23,12 @@ for(const s of scenes){
   assert.ok(s.timeline.length>=1);
   assert.ok(s.humanIntent.normalExpectation&&s.humanIntent.impossibleEvent&&s.humanIntent.visualQuestion);
   for(const a of s.assets){
-    assert.ok(/\.(webp|png)$/.test(a.path),`${s.id}/${a.id} must use raster layered asset`);
+    assert.ok(/\.png$/.test(a.path),`${s.id}/${a.id} must use production raster PNG`);
     assert.ok(!a.path.endsWith('.svg'),`${s.id}/${a.id} rejected SVG production asset`);
+    const p=`${RES}/${a.path}`;
+    assert.ok(fs.existsSync(p),`${s.id}/${a.id} missing generated raster asset ${p}`);
+    const sig=fs.readFileSync(p).subarray(0,8).toString('hex');
+    assert.equal(sig,'89504e470d0a1a0a',`${s.id}/${a.id} is not PNG`);
   }
   const semantic=s.actors.flatMap(a=>a.semantic?[a.semantic]:[]);
   const ids=new Set(semantic.map(x=>x.id));
@@ -55,6 +60,7 @@ for(const required of [
   `${ROOT}/assets/scripts/cocos/ResultCardController.ts`,
   `${ROOT}/assets/scripts/cocos/ReferenceGameFlow.ts`,
   `${ROOT}/assets/scripts/platform/PlatformAdapter.ts`,
+  `${ROOT}/tools/generate_visual_assets.py`,
   `${ROOT}/VISUAL_PIPELINE_V1.md`,
   `${ROOT}/package.json`,
   `${ROOT}/settings/project.json`
@@ -76,4 +82,5 @@ assert.ok(flow.includes('session_result'));
 const visual=fs.readFileSync(`${ROOT}/VISUAL_PIPELINE_V1.md`,'utf8');
 for(const phrase of ['stylized editorial illustration','any visible part','Machine gates cannot certify recognizability'])assert.ok(visual.includes(phrase),`visual policy missing ${phrase}`);
 
+for(const scene of ['extra-shadow','early-splash','color-theft']) assert.ok(fs.existsSync(`evidence/native-visual-v1/${scene}-post.png`),`missing human-review artifact ${scene}`);
 console.log('FACTORY_NATIVE_CONTRACT_PASS');

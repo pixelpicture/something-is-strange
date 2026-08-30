@@ -14,7 +14,7 @@ permissions:
 jobs:
   contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,7 +22,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate Factory V1 contracts
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate production-intent layered raster assets
+        run: |
+          python -m pip install --disable-pip-version-check pillow==11.3.0
+          python factory-native/tools/generate_visual_assets.py
+      - name: Validate Factory V1 contracts and generated visual slice
         run: |
           node scripts/validate_factory_v1.mjs
           node scripts/validate_factory_native.mjs
@@ -35,3 +42,13 @@ jobs:
           test -d factory-native/assets
           test -d factory-native/settings
           echo FACTORY_NATIVE_BOUNDARY_PASS
+      - name: Package human-review evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: factory-native-visual-evidence
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            evidence/native-visual-v1/*.png
+            factory-native/assets/resources/assets/**/*.png
+            factory-native/assets/resources/scenes/*.scene.json
