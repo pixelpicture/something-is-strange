@@ -13,7 +13,7 @@ export interface TimelineCommand { atMs:number; actorId:string; command:'state'|
 export interface LayeredSceneManifest {
   schemaVersion:1; id:string; mechanic:Mechanic; canvas:{width:number;height:number};
   assets:AssetRef[]; actors:SceneActor[]; timeline:TimelineCommand[];
-  anomalyAtMs:number; answerObjectIds:string[];
+  anomalyAtMs:number; evidenceBaselineAtMs:number; answerObjectIds:string[];
   humanIntent:{normalExpectation:string; impossibleEvent:string; visualQuestion:string};
 }
 
@@ -26,5 +26,6 @@ export function validateManifest(m:LayeredSceneManifest):string[]{
   const semantics=new Set(m.actors.filter(a=>a.semantic).map(a=>a.semantic!.id));
   for(const id of m.answerObjectIds)if(!semantics.has(id))errors.push(`answer lacks semantic object ${id}`);
   if(m.anomalyAtMs<500||m.anomalyAtMs>5000)errors.push('anomaly timing');
+  if(m.evidenceBaselineAtMs<0||m.evidenceBaselineAtMs>=m.anomalyAtMs)errors.push('evidence baseline timing');
   return errors;
 }

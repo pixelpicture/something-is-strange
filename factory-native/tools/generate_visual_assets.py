@@ -80,8 +80,8 @@ def render_manifest(manifest,asset_root,t):
 def evidence(asset_root,scene_root,out):
  out.mkdir(parents=True,exist_ok=True)
  for p in sorted(scene_root.glob('*.scene.json')):
-  m=json.loads(p.read_text()); anomaly=m['anomalyAtMs']; end=max([anomaly]+[e['atMs']+(e.get('value',{}).get('durationMs',0) if isinstance(e.get('value'),dict) else 0) for e in m['timeline']])
-  for label,t in [('before',max(0,anomaly-250)),('anomaly',anomaly),('after',end+100)]: save(q(render_manifest(m,asset_root,t)),out/f"{m['id']}-{label}.png")
+  m=json.loads(p.read_text()); anomaly=m['anomalyAtMs']; baseline=m['evidenceBaselineAtMs']; end=max([anomaly]+[e['atMs']+(e.get('value',{}).get('durationMs',0) if isinstance(e.get('value'),dict) else 0) for e in m['timeline']])
+  for label,t in [('before',baseline),('anomaly',anomaly),('after',end+100)]: save(q(render_manifest(m,asset_root,t)),out/f"{m['id']}-{label}.png")
 
 if __name__=='__main__':
  ap=argparse.ArgumentParser(); ap.add_argument('--output-root',default='factory-native/assets/resources/assets'); ap.add_argument('--scene-root',default='factory-native/assets/resources/scenes'); ap.add_argument('--evidence-dir',default='evidence/native-visual-v1'); a=ap.parse_args(); out=Path(a.output_root)

@@ -12,16 +12,8 @@
   ],
   "actors": [
     { "id": "background", "z": 0, "x": 540, "y": 960, "initialState": "base", "states": { "base": { "assetId": "table-bg" } } },
-    {
-      "id": "vaseActor", "z": 4, "x": 540, "y": 940, "initialState": "pale",
-      "states": { "pale": { "assetId": "vase-pale" }, "red": { "assetId": "vase-red" } },
-      "semantic": { "id": "vase", "z": 4, "touchExpansionPx": 24, "hitPolygons": [[[430,690],[650,690],[690,840],[625,1175],[455,1175],[390,840]]] }
-    },
-    {
-      "id": "ballActor", "z": 3, "x": 250, "y": 745, "initialState": "red",
-      "states": { "red": { "assetId": "ball-red" }, "pale": { "assetId": "ball-pale" } },
-      "semantic": { "id": "exit_ball", "z": 3, "touchExpansionPx": 24, "hitPolygons": [[[745,660],[915,660],[915,830],[745,830]]] }
-    }
+    { "id": "vaseActor", "z": 4, "x": 540, "y": 940, "initialState": "pale", "states": { "pale": { "assetId": "vase-pale" }, "red": { "assetId": "vase-red" } }, "semantic": { "id": "vase", "z": 4, "touchExpansionPx": 24, "hitPolygons": [[[430,690],[650,690],[690,840],[625,1175],[455,1175],[390,840]]] } },
+    { "id": "ballActor", "z": 3, "x": 250, "y": 745, "initialState": "red", "states": { "red": { "assetId": "ball-red" }, "pale": { "assetId": "ball-pale" } }, "semantic": { "id": "exit_ball", "z": 3, "touchExpansionPx": 24, "hitPolygons": [[[745,660],[915,660],[915,830],[745,830]]] } }
   ],
   "timeline": [
     { "atMs": 450, "actorId": "ballActor", "command": "move", "value": { "x": 830, "y": 745, "durationMs": 2100 } },
@@ -29,10 +21,7 @@
     { "atMs": 1750, "actorId": "ballActor", "command": "state", "value": "pale" }
   ],
   "anomalyAtMs": 2350,
+  "evidenceBaselineAtMs": 800,
   "answerObjectIds": ["vase", "exit_ball"],
-  "humanIntent": {
-    "normalExpectation": "A clearly red ball passes behind a clearly pale vase.",
-    "impossibleEvent": "As the ball emerges, it is pale and the vase has become red.",
-    "visualQuestion": "Where did the ball's color go?"
-  }
+  "humanIntent": { "normalExpectation": "A clearly red ball passes behind a clearly pale vase.", "impossibleEvent": "As the ball emerges, it is pale and the vase has become red.", "visualQuestion": "Where did the ball's color go?" }
 }

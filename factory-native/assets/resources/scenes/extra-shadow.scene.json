@@ -14,20 +14,13 @@
     { "id": "background", "z": 0, "x": 540, "y": 960, "initialState": "base", "states": { "base": { "assetId": "park-bg" } } },
     { "id": "shadowA", "z": 2, "x": 360, "y": 630, "initialState": "base", "states": { "base": { "assetId": "shadow-natural" } } },
     { "id": "shadowB", "z": 2, "x": 650, "y": 630, "initialState": "base", "states": { "base": { "assetId": "shadow-natural" } } },
-    {
-      "id": "impossibleShadow", "z": 2, "x": 805, "y": 610, "initialState": "hidden",
-      "states": { "hidden": { "assetId": "shadow-impossible", "visible": false }, "shown": { "assetId": "shadow-impossible", "visible": true } },
-      "semantic": { "id": "impossible_shadow", "z": 2, "touchExpansionPx": 28, "hitPolygons": [[[665,330],[735,365],[780,520],[765,720],[720,865],[805,890],[925,760],[945,515],[855,330]]] }
-    },
+    { "id": "impossibleShadow", "z": 2, "x": 805, "y": 610, "initialState": "hidden", "states": { "hidden": { "assetId": "shadow-impossible", "visible": false }, "shown": { "assetId": "shadow-impossible", "visible": true } }, "semantic": { "id": "impossible_shadow", "z": 2, "touchExpansionPx": 28, "hitPolygons": [[[665,330],[735,365],[780,520],[765,720],[720,865],[805,890],[925,760],[945,515],[855,330]]] } },
     { "id": "personA", "z": 3, "x": 410, "y": 900, "initialState": "base", "states": { "base": { "assetId": "person-a" } } },
     { "id": "personB", "z": 3, "x": 670, "y": 900, "initialState": "base", "states": { "base": { "assetId": "person-b" } } }
   ],
   "timeline": [{ "atMs": 1650, "actorId": "impossibleShadow", "command": "state", "value": "shown" }],
   "anomalyAtMs": 1650,
+  "evidenceBaselineAtMs": 850,
   "answerObjectIds": ["impossible_shadow"],
-  "humanIntent": {
-    "normalExpectation": "Two people under one dominant light source cast two readable shadows.",
-    "impossibleEvent": "A third full cast shadow appears with no person attached.",
-    "visualQuestion": "Which shadow has no owner?"
-  }
+  "humanIntent": { "normalExpectation": "Two people under one dominant light source cast two readable shadows.", "impossibleEvent": "A third full cast shadow appears with no person attached.", "visualQuestion": "Which shadow has no owner?" }
 }
