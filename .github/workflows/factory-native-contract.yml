@@ -10,6 +10,12 @@ on:
       - 'scripts/validate_factory_v1.mjs'
       - '.github/workflows/factory-native-contract.yml'
   workflow_dispatch:
+    inputs:
+      creator_proof:
+        description: 'Run the expensive real Cocos Creator 3.8.8 ByteDance proof'
+        required: false
+        default: false
+        type: boolean
 permissions:
   contents: read
 jobs:
@@ -61,27 +67,21 @@ jobs:
             factory-native/assets/resources/scenes/*.scene.json
 
   creator-proof:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.creator_proof == true }}
     needs: contract
     runs-on: macos-15
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
-      - name: Decide whether to run expensive Creator proof
-        id: marker
-        shell: bash
-        run: |
-          if git log -1 --pretty=%B | grep -q '\[creator-proof\]'; then echo 'run=true' >> "$GITHUB_OUTPUT"; else echo 'run=false' >> "$GITHUB_OUTPUT"; fi
       - name: Restore Cocos Creator 3.8.8 cache
-        if: steps.marker.outputs.run == 'true'
         uses: actions/cache@v4
         with:
           path: .ci/cocos-3.8.8
           key: cocos-3.8.8-mac-010512-v1
       - name: Install official Cocos Creator 3.8.8
-        if: steps.marker.outputs.run == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -102,7 +102,6 @@ jobs:
           chmod +x "$EXE"
           echo "COCOS_EXE=$EXE" >> "$GITHUB_ENV"
       - name: Build real ByteDance mini-game with Creator 3.8.8
-        if: steps.marker.outputs.run == 'true'
         shell: bash
         run: |
           set +e
@@ -124,7 +123,7 @@ jobs:
           fi
           echo "BYTE_DANCE_BUILD_ROOT=$(dirname "$GAME")"
       - name: Upload real Creator build evidence
-        if: steps.marker.outputs.run == 'true' && always()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cocos-creator-3.8.8-bytedance-proof
