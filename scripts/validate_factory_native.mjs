@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 
 const ROOT='factory-native';
 const RES=`${ROOT}/assets/resources`;
@@ -33,4 +34,5 @@ const controller=fs.readFileSync(`${ROOT}/assets/scripts/cocos/ReferenceGameCont
 const renderer=fs.readFileSync(`${ROOT}/assets/scripts/cocos/LayeredSceneRenderer.ts`,'utf8');assert.ok(renderer.includes('LayeredSceneManifest'));assert.ok(renderer.includes('manifest.timeline'));
 const flow=fs.readFileSync(`${ROOT}/assets/scripts/cocos/ReferenceGameFlow.ts`,'utf8');assert.ok(flow.includes("['extra-shadow','early-splash','color-theft']"));assert.ok(flow.includes('controller?.configure'));assert.ok(flow.includes('markAnomalyVisible'));assert.ok(flow.includes('session_result'));
 const visual=fs.readFileSync(`${ROOT}/VISUAL_PIPELINE_V1.md`,'utf8');for(const phrase of ['stylized editorial illustration','any visible part','Machine gates cannot certify recognizability'])assert.ok(visual.includes(phrase),`visual policy missing ${phrase}`);
+execFileSync('python',['scripts/validate_semantic_visual_coverage.py'],{stdio:'inherit'});
 console.log('FACTORY_NATIVE_CONTRACT_PASS');

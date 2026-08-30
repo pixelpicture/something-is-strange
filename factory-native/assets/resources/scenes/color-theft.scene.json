@@ -12,8 +12,8 @@
   ],
   "actors": [
     { "id": "background", "z": 0, "x": 540, "y": 960, "initialState": "base", "states": { "base": { "assetId": "table-bg" } } },
-    { "id": "vaseActor", "z": 4, "x": 540, "y": 940, "initialState": "pale", "states": { "pale": { "assetId": "vase-pale" }, "red": { "assetId": "vase-red" } }, "semantic": { "id": "vase", "z": 4, "touchExpansionPx": 24, "hitPolygons": [[[430,690],[650,690],[690,840],[625,1175],[455,1175],[390,840]]] } },
-    { "id": "ballActor", "z": 3, "x": 250, "y": 745, "initialState": "red", "states": { "red": { "assetId": "ball-red" }, "pale": { "assetId": "ball-pale" } }, "semantic": { "id": "exit_ball", "z": 3, "touchExpansionPx": 24, "hitPolygons": [[[745,660],[915,660],[915,830],[745,830]]] } }
+    { "id": "vaseActor", "z": 4, "x": 540, "y": 940, "initialState": "pale", "states": { "pale": { "assetId": "vase-pale" }, "red": { "assetId": "vase-red" } }, "semantic": { "id": "vase", "z": 4, "touchExpansionPx": 24, "hitPolygons": [[[420,660],[660,660],[680,710],[640,1065],[605,1215],[475,1215],[440,1065],[400,710]]] } },
+    { "id": "ballActor", "z": 3, "x": 250, "y": 745, "initialState": "red", "states": { "red": { "assetId": "ball-red" }, "pale": { "assetId": "ball-pale" } }, "semantic": { "id": "exit_ball", "z": 3, "touchExpansionPx": 24, "hitPolygons": [[[685,650],[925,650],[925,840],[685,840]]] } }
   ],
   "timeline": [
     { "atMs": 450, "actorId": "ballActor", "command": "move", "value": { "x": 830, "y": 745, "durationMs": 2100 } },
