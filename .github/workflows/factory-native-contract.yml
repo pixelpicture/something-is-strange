@@ -68,7 +68,7 @@ jobs:
             factory-native/assets/resources/scenes/*.scene.json
 
   creator-proof:
-    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.creator_proof == true) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.creator_proof == true }}
     needs: contract
     runs-on: macos-15
     timeout-minutes: 45
