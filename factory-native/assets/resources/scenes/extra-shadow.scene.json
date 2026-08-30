@@ -14,7 +14,7 @@
     { "id": "background", "z": 0, "x": 540, "y": 960, "initialState": "base", "states": { "base": { "assetId": "park-bg" } } },
     { "id": "shadowA", "z": 2, "x": 570, "y": 330, "initialState": "base", "states": { "base": { "assetId": "shadow-natural" } } },
     { "id": "shadowB", "z": 2, "x": 760, "y": 330, "initialState": "base", "states": { "base": { "assetId": "shadow-natural" } } },
-    { "id": "impossibleShadow", "z": 2, "x": 860, "y": 330, "initialState": "hidden", "states": { "hidden": { "assetId": "shadow-impossible", "visible": false }, "shown": { "assetId": "shadow-impossible", "visible": true } }, "semantic": { "id": "impossible_shadow", "z": 2, "touchExpansionPx": 28, "hitPolygons": [[[720,45],[855,45],[1005,160],[1015,235],[890,565],[845,610],[765,610],[705,550],[690,350]]] } },
+    { "id": "impossibleShadow", "z": 2, "x": 860, "y": 330, "initialState": "hidden", "states": { "hidden": { "assetId": "shadow-impossible", "visible": false }, "shown": { "assetId": "shadow-impossible", "visible": true } }, "semantic": { "id": "impossible_shadow", "z": 2, "touchExpansionPx": 28, "hitPolygons": [[[880,540],[970,530],[1005,485],[990,420],[940,350],[890,300],[840,245],[815,175],[745,130],[700,165],[720,235],[770,300],[825,365],[860,430]]] } },
     { "id": "personA", "z": 3, "x": 380, "y": 900, "initialState": "base", "states": { "base": { "assetId": "person-a" } } },
     { "id": "personB", "z": 3, "x": 650, "y": 900, "initialState": "base", "states": { "base": { "assetId": "person-b" } } }
   ],
